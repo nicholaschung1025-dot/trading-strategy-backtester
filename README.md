@@ -26,6 +26,21 @@ npm test                  # engine golden tests + colour contrast tests
 npm run check             # both
 ```
 
+### Run the server automatically
+
+| Platform | Command | Notes |
+| --- | --- | --- |
+| Windows, one click | `start.bat` | Starts the server minimised and opens the browser |
+| macOS / Linux | `./start.sh` | Same, opens the browser |
+| Windows, at every log on | `powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1` | Creates a scheduled task; remove it with the same script plus `-Uninstall` |
+| Any host with Docker | `docker compose up -d` | `restart: unless-stopped`, so it comes back after a reboot |
+| Linux VPS (systemd) | `sudo cp deploy/falcon-lab.service /etc/systemd/system/ && sudo systemctl enable --now falcon-lab` | Runs as a service on `PORT=8765` |
+| VS Code | `Terminal → Run Task… → "Serve Falcon Lab"` | Background task you can start with F5 |
+
+The server reads `PORT` from the environment (default `8765`) and binds
+`0.0.0.0` whenever `PORT` is set, so it works unchanged behind Docker,
+systemd or a hosted platform.
+
 ## Deploy
 
 ### GitHub Pages (static, one click)
@@ -98,10 +113,22 @@ src/charts.js     canvas rendering, zoom/pan, accessible data tables
 src/app.js        UI wiring, themes, exports
 src/threads.js    WebGL background animation
 functions/        GitHub Pages Function for the Yahoo proxy
+legacy/streamlit/ the original Python/Streamlit app, kept for reference
 tests/            node:test suites (engine golden values, WCAG contrast)
-scripts/lint.mjs  lightweight lint
+scripts/          lint + Windows auto-start installer
+deploy/           systemd unit
+start.bat         Windows: start the server and open the browser
+start.sh          macOS / Linux: same
+Dockerfile        container image
 server.py         static server + Yahoo Finance proxy
 ```
+
+## The original Streamlit app
+
+The repository started life as a Python/Streamlit backtester. It still
+lives in [`legacy/streamlit/`](legacy/) as a reference implementation of
+the same engine — the web workbench is a port of it, not a rewrite from
+scratch. Nothing in the root project imports from that folder.
 
 ## Design rules worth keeping
 

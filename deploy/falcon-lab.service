@@ -1,0 +1,19 @@
+[Unit]
+Description=Falcon Lab trading strategy backtester
+Documentation=https://github.com/nicholaschung1025-dot/trading-strategy-backtester
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=falcon
+Group=falcon
+WorkingDirectory=/opt/falcon-lab
+Environment=HOST=0.0.0.0
+Environment=PORT=8765
+ExecStart=/usr/bin/python3 /opt/falcon-lab/server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

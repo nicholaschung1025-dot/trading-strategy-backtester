@@ -1,0 +1,10 @@
+services:
+  falcon-lab:
+    build: .
+    container_name: falcon-lab
+    ports:
+      - "8765:8765"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8765"
+    restart: unless-stopped

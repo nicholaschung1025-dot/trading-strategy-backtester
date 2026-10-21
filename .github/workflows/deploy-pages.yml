@@ -29,16 +29,23 @@ jobs:
           # Only the static app is published; the server-side bits stay in the repo.
           ignore: |
             .github
+            .vscode
             server.py
             Procfile
             render.yaml
             scripts
             tests
             docs
+            legacy
+            deploy
             README.md
             LICENSE
             .gitattributes
             .gitignore
             package.json
+            Dockerfile
+            docker-compose.yml
+            start.bat
+            start.sh
       - id: deployment
         uses: actions/deploy-pages@v4

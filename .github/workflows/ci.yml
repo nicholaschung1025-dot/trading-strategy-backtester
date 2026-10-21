@@ -17,4 +17,4 @@ jobs:
       - name: Test
         run: npm test
       - name: Python syntax
-        run: python -m py_compile server.py
+        run: python -m py_compile server.py legacy/streamlit/*.py
