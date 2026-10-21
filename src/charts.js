@@ -803,5 +803,5 @@
 
   var drawRaf = 0;
 
-  Falcon.charts = {fitCanvas: fitCanvas, scheduleDraws: scheduleDraws, chartPalette: chartPalette, drawAll: drawAll, drawCmp: drawCmp, resetChartView: resetChartView, resetAllChartViews: resetAllChartViews, updateChartButtons: updateChartButtons, zoomChart: zoomChart, panChart: panChart, bindChartZoom: bindChartZoom, CHART_IDS: CHART_IDS, CHART_LABELS: CHART_LABELS};
+  Falcon.charts = {fitCanvas: fitCanvas, scheduleDraws: scheduleDraws, chartPalette: chartPalette, drawCmp: drawCmp, resetChartView: resetChartView, resetAllChartViews: resetAllChartViews, bindChartZoom: bindChartZoom};
 })(window);

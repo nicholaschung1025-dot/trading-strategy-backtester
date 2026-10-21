@@ -990,5 +990,5 @@
 
   var runTimer = 0;
 
-  Falcon.app = {init: init};
+  Falcon.app = {init: init, applyTheme: applyTheme, currentTheme: currentTheme};
 })(window);

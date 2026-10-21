@@ -26,17 +26,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
-          # Everything except the server-side bits is static.
+          # Only the static app is published; the server-side bits stay in the repo.
           ignore: |
             .github
             server.py
             Procfile
             render.yaml
-            requirements.txt
             scripts
             tests
             docs
             README.md
             LICENSE
+            .gitattributes
+            .gitignore
+            package.json
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -1,3 +1,0 @@
-# Falcon Lab has no third-party Python dependencies — the standard library
-# is enough. This file exists so platforms that run `pip install -r
-# requirements.txt` do not fail.

@@ -626,13 +626,6 @@ button { cursor: pointer; }
   place-items: center;
 }
 .rule .del:hover { background: var(--accent-soft-2); color: var(--accent-deep); }
-.rule-flag {
-  grid-column: 1 / -1;
-  font-size: .6rem;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--faint-2);
-}
 
 .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .1rem .55rem; }
 .switch {
@@ -875,17 +868,6 @@ button { cursor: pointer; }
 }
 .data-table td { color: var(--ink-2); }
 .chart-data > div { max-height: 13rem; overflow: auto; }
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
   /* ---------- chart toolbar ---------- */
 .chart-tools {
   position: absolute;

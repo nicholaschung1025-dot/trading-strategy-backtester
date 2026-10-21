@@ -190,5 +190,5 @@
     return s;
   }
 
-  Falcon.indicators = {sma: sma, ema: ema, rsi: rsi, rollingMean: rollingMean, rollingStd: rollingStd, macdSeries: macdSeries, atrSeries: atrSeries, coreSeries: coreSeries, aggregateWeekly: aggregateWeekly, buildSeries: buildSeries};
+  Falcon.indicators = {sma: sma, ema: ema, rsi: rsi, buildSeries: buildSeries};
 })(window);

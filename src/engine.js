@@ -359,5 +359,5 @@
     };
   }
 
-  Falcon.engine = {DEFS: DEFS, TEMPLATES: TEMPLATES, IND_LABEL: IND_LABEL, IND_KEYS: IND_KEYS, OPS: OPS, OP_LABEL: OP_LABEL, generateDataset: generateDataset, parseCsv: parseCsv, parseYahooChart: parseYahooChart, buildSeries: I.buildSeries, execute: execute, calcMetrics: calcMetrics, readSeries: readSeries, evalCond: evalCond, evalGroup: evalGroup};
+  Falcon.engine = {DEFS: DEFS, TEMPLATES: TEMPLATES, IND_LABEL: IND_LABEL, IND_KEYS: IND_KEYS, OPS: OPS, OP_LABEL: OP_LABEL, generateDataset: generateDataset, parseCsv: parseCsv, parseYahooChart: parseYahooChart, buildSeries: I.buildSeries, execute: execute, evalCond: evalCond};
 })(window);

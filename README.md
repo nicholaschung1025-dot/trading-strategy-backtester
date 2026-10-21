@@ -1,14 +1,14 @@
-# Falcon Lab
+# Trading Strategy Backtester
 
-[![CI](https://github.com/nicholaschung1025/falcon-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/nicholaschung1025/falcon-lab/actions/workflows/ci.yml)
-[![Pages](https://github.com/nicholaschung1025/falcon-lab/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/nicholaschung1025/falcon-lab/actions/workflows/deploy-pages.yml)
+[![CI](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/ci.yml/badge.svg)](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/ci.yml)
+[![Pages](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/deploy-pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-c2410c.svg)](LICENSE)
 
-A zero-dependency strategy backtesting workbench. It runs from a static file
-server, needs no build step, and the whole interface is one predictable set
-of design tokens.
+**Falcon Lab** — a zero-dependency trading-strategy backtester. It runs
+from a static file server, needs no build step, and the whole interface is
+one predictable set of design tokens.
 
-![Four themes, one token system](docs/preview.png)
+![Overview of the Falcon Lab workbench](docs/preview.png)
 
 ## Quick start
 
@@ -47,9 +47,26 @@ The server reads `PORT` from the environment and binds `0.0.0.0` when it
 is set.
 
 ```bash
-# Render blueprint
+# Render blueprint (from the repo root)
 render blueprint launch
 ```
+
+## What it does
+
+* **Strategy builder** — entry/exit rules over 30+ indicators (SMA, EMA,
+  RSI, MACD, Bollinger, ATR, Stochastic, ADX, VWAP, OBV…), combined with
+  AND/OR logic.
+* **Risk model** — capital, stop loss, take profit, commission, slippage,
+  weekly trend filter, and fractional or whole-share sizing.
+* **Results** — net P&L, return, win rate, profit factor, max drawdown,
+  Sharpe/Sortino/Calmar, streaks, expectancy, equity curve vs buy &
+  hold, underwater drawdown, and a monthly returns heat map.
+* **Interaction** — zoom, pan and reset on every chart (wheel, drag,
+  keyboard, double click), trade markers with hover details, and a data
+  table behind each chart.
+* **Compare** — run the same rules against a second universe.
+* **Export** — trades CSV and a full text report (see
+  [`docs/DATA_FORMATS.md`](docs/DATA_FORMATS.md)).
 
 ## Data sources
 
