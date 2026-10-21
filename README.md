@@ -1,147 +1,149 @@
 # Trading Strategy Backtester
 
 [![CI](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/ci.yml/badge.svg)](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/ci.yml)
-[![Pages](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/deploy-pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-c2410c.svg)](LICENSE)
 
-**Falcon Lab** — a zero-dependency trading-strategy backtester. It runs
-from a static file server, needs no build step, and the whole interface is
-one predictable set of design tokens.
+**Falcon Lab** — a zero-dependency trading-strategy backtester. One
+Python file serves it, no build step, no npm install, and the whole
+interface is driven by a single set of design tokens.
 
 ![Overview of the Falcon Lab workbench](docs/preview.png)
 
-## Quick start
+---
+
+## 1. Start it
 
 ```bash
-python server.py          # http://127.0.0.1:8765/index.html
+python server.py
 ```
 
-No pip install is required — the server only uses the Python standard
-library. You can also open `index.html` straight from disk; the app boots
-fine and only the Yahoo Finance lookup needs the local server.
+Then open <http://127.0.0.1:8765/index.html>.
 
-```bash
-npm run lint              # syntax + hygiene checks
-npm test                  # engine golden tests + colour contrast tests
-npm run check             # both
-```
-
-### Run the server automatically
+* Nothing to install — the server only uses the Python standard library.
+* `index.html` also opens straight from disk, but then the Yahoo Finance
+  lookup has no proxy to talk to, so only the simulated universes and
+  local CSV files work.
 
 | Platform | Command | Notes |
 | --- | --- | --- |
 | Windows, one click | `start.bat` | Starts the server minimised and opens the browser |
 | macOS / Linux | `./start.sh` | Same, opens the browser |
-| Windows, at every log on | `powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1` | Creates a scheduled task; remove it with the same script plus `-Uninstall` |
-| Any host with Docker | `docker compose up -d` | `restart: unless-stopped`, so it comes back after a reboot |
+| Windows, at every log on | `powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1` | Creates a scheduled task; remove it with `-Uninstall` |
+| Any host with Docker | `docker compose up -d` | `restart: unless-stopped`, so it returns after a reboot |
 | Linux VPS (systemd) | `sudo cp deploy/falcon-lab.service /etc/systemd/system/ && sudo systemctl enable --now falcon-lab` | Runs as a service on `PORT=8765` |
-| VS Code | `Terminal → Run Task… → "Serve Falcon Lab"` | Background task you can start with F5 |
+| VS Code | `Terminal → Run Task… → "Serve Falcon Lab"` | Background task, F5 friendly |
 
 The server reads `PORT` from the environment (default `8765`) and binds
 `0.0.0.0` whenever `PORT` is set, so it works unchanged behind Docker,
 systemd or a hosted platform.
 
-## Deploy
+## 2. Use it
 
-### GitHub Pages (static, one click)
+The screen has three parts: **Data** and **Strategy** on the left rail,
+the results on the right.
 
-1. Push this repository to GitHub with the default branch `main`.
+**① Choose the data**
+
+| Where | What you get | How |
+| --- | --- | --- |
+| Universe | A deterministic *simulated* series (tickers end in `-SIM`, e.g. `SPY-SIM`) | Pick one in **Data → Universe**, then set the history length |
+| Yahoo Finance | Real adjusted daily bars | Type a ticker (`AAPL`, `BTC-USD`, `^GSPC`, `0700.HK`) in **Data → Yahoo Finance** and press **Load** |
+| Custom CSV | Your own OHLCV file | **Data → Custom OHLCV → Choose CSV** — the file is parsed in your browser and never uploaded |
+
+**② Describe the strategy**
+
+* **Template** — six ready-made strategies (Golden Cross, RSI Reversion,
+  MACD Momentum, Bollinger Squeeze, Dual Timeframe, Trend + Oscillator).
+  Pick one and edit from there.
+* **Rules** — add entry and exit conditions with `+ Entry rule` /
+  `+ Exit rule`. Each condition is *indicator · operator · value or
+  indicator*, and the row under the rule switches the right-hand side
+  between a number and another indicator. Combine the rows with **AND** or
+  **OR**.
+* **Risk** — capital, stop loss %, take profit %, commission %, slippage %,
+  the weekly trend filter and whether fractional shares are allowed.
+
+**③ Run it**
+
+Press **Run backtest** (or change anything — the app re-runs itself).
+The status line on the right shows the trade count and the total return.
+
+**④ Read the result**
+
+* **Metric tiles** — net P&L, total return, trades, win rate, profit
+  factor, max drawdown, Sharpe, Sortino, Calmar, average win/loss, fees.
+* **Price & execution** — price with the SMA overlays, green triangles for
+  entries and orange/red triangles for exits. Hover a marker for the
+  trade details.
+* **Equity curve** — strategy against buy & hold.
+* **Drawdown** — the underwater curve.
+* **Monthly returns** — one heat map cell per month, green or red.
+* **Show data table** — every chart carries a table of exactly what is on
+  screen, so the numbers are reachable without a mouse.
+* **Trade log** — every closed trade with entry, exit, size, P&L, return,
+  holding time and the reason it closed.
+
+**⑤ Compare** — the *Compare* tab runs the same rules against a second
+universe and puts the two equity curves side by side.
+
+**⑥ Export** — **Download trades CSV** for a spreadsheet, or
+**Download report TXT** for the full write-up (see
+[`docs/DATA_FORMATS.md`](docs/DATA_FORMATS.md)).
+
+### Shortcuts
+
+| Action | How |
+| --- | --- |
+| Zoom a chart | Mouse wheel, or the `−` / `+` buttons, or `+` / `-` when the chart has focus |
+| Pan a chart | Drag with the mouse, or the `←` / `→` arrow keys |
+| Reset a chart | The `↺` button, double click, or `0` / `Home` |
+| Trade details | Hover a triangle on the price chart |
+| Change theme | The colour dots in the header (saved in the browser) |
+| Pause the background | The wave button in the header |
+
+## 3. Where the data comes from
+
+* **Simulated universes** (default) — generated by the app itself from a
+  fixed seed, so the same date range always produces the same series.
+  They are labelled `-SIM` on purpose: they are *not* real prices.
+* **Yahoo Finance** — real adjusted daily history, fetched through the
+  local proxy in `server.py` (the browser cannot call Yahoo directly
+  because of CORS).
+* **Custom CSV** — `date, open, high, low, close, volume`; at least 60
+  rows; parsed locally.
+
+## 4. Deploy it (optional)
+
+### GitHub Pages
+
+1. Push to GitHub with the default branch `main`.
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. The `Deploy to GitHub Pages` workflow publishes the site to
-   <https://nicholaschung1025-dot.github.io/trading-strategy-backtester/>.
+3. The `Deploy to GitHub Pages` workflow publishes the site.
 
-Everything works on the published site: the simulated universes, custom
-CSV files, every chart, the themes and the exports.
-
-#### Where the Yahoo proxy runs
-
-GitHub Pages cannot execute Python — it only runs static assets plus
-*Pages Functions* (JavaScript). So the proxy for the Pages site is the
-Pages Function in `functions/api/yahoo.js`, which is the same job
-`server.py` does locally.
-
-Pages Functions are only mounted when the site source is set to
-**GitHub Actions** (Settings → Pages → Build and deployment → Source).
-The REST API cannot toggle that, so it is the one manual click in this
-README. Until it is set, the app says so instead of failing silently.
-
-If you would rather run the real `server.py`, deploy it anywhere that
-runs Python (Render, Railway, Fly, a VPS) — it starts automatically and
-sends `Access-Control-Allow-Origin: *`, so the Pages site can use it.
-Point the app at it in two ways:
-
-* open the site with `?api=https://your-app.onrender.com`, or
-* open the **Deployment** panel in the left rail and paste the base URL.
-
-Both remember the choice in `localStorage`.
+GitHub Pages cannot execute Python — it runs static assets plus *Pages
+Functions* (JavaScript). The proxy for a Pages site is therefore
+`functions/api/yahoo.js`, which does the same job as `server.py`. Pages
+Functions are only mounted when the site source is set to **GitHub
+Actions**; the REST API cannot toggle that, so it is the one manual step.
+Until it is set, the app says so instead of failing silently.
 
 ### Any Python host (Render, Railway, Fly, Heroku…)
 
 `render.yaml` is included, so Render can deploy with the Infra button. On
-other platforms the start command is `python server.py` (see `Procfile`).
-The server reads `PORT` from the environment and binds `0.0.0.0` when it
-is set.
-
-This is the way to get the *real* `server.py` running automatically for
-users of the GitHub Pages site: deploy it here, then point the Pages site
-at it with `?api=https://your-app.onrender.com` (or the Deployment
-panel in the left rail).
+other platforms the start command is `python server.py` (see
+`Procfile`).
 
 ```bash
-# Render blueprint (from the repo root)
 render blueprint launch
 ```
 
-## What it does
+A hosted `server.py` starts on its own and sends
+`Access-Control-Allow-Origin: *`, so a static front end on another host
+can use it: open the site with `?api=https://your-app.onrender.com`, or
+paste the base URL into the **Deployment** panel in the left rail. Both
+remember the choice in `localStorage`.
 
-* **Strategy builder** — entry/exit rules over 30+ indicators (SMA, EMA,
-  RSI, MACD, Bollinger, ATR, Stochastic, ADX, VWAP, OBV…), combined with
-  AND/OR logic.
-* **Risk model** — capital, stop loss, take profit, commission, slippage,
-  weekly trend filter, and fractional or whole-share sizing.
-* **Results** — net P&L, return, win rate, profit factor, max drawdown,
-  Sharpe/Sortino/Calmar, streaks, expectancy, equity curve vs buy &
-  hold, underwater drawdown, and a monthly returns heat map.
-* **Interaction** — zoom, pan and reset on every chart (wheel, drag,
-  keyboard, double click), trade markers with hover details, and a data
-  table behind each chart.
-* **Compare** — run the same rules against a second universe.
-* **Export** — trades CSV and a full text report (see
-  [`docs/DATA_FORMATS.md`](docs/DATA_FORMATS.md)).
-
-## Data sources
-
-* **Simulated universes** (default) — deterministic series generated by the
-  app itself. Their tickers end in `-SIM` because they are *not* real
-  prices.
-* **Yahoo Finance** — real adjusted daily history through the proxy.
-* **Custom CSV** — your own OHLCV file (see `docs/DATA_FORMATS.md`).
-
-## Layout
-
-```
-index.html        markup only (no inline CSS or JS)
-styles.css        design tokens + every theme
-threads.css       background animation container
-src/util.js       DOM + formatting helpers
-src/indicators.js SMA, EMA, RSI, MACD, Bollinger, ATR, Stoch, ADX, VWAP, OBV…
-src/state.js      the single shared state object
-src/engine.js     dataset generation, CSV/Yahoo parsing, rule DSL, backtest engine
-src/charts.js     canvas rendering, zoom/pan, accessible data tables
-src/app.js        UI wiring, themes, exports
-src/threads.js    WebGL background animation
-functions/        GitHub Pages Function for the Yahoo proxy
-legacy/streamlit/ the original Python/Streamlit app, kept for reference
-tests/            node:test suites (engine golden values, WCAG contrast)
-scripts/          lint + Windows auto-start installer
-deploy/           systemd unit
-start.bat         Windows: start the server and open the browser
-start.sh          macOS / Linux: same
-Dockerfile        container image
-server.py         static server + Yahoo Finance proxy
-```
-
-## Data & privacy
+## 5. Data & privacy
 
 **What the app sends, and where**
 
@@ -182,27 +184,53 @@ server.py         static server + Yahoo Finance proxy
 Run `npm test` to verify all of the above — the privacy suite fails the
 build if any of these invariants is broken.
 
-## The original Streamlit app
+## 6. Layout
+
+```
+index.html        markup only (no inline CSS or JS)
+styles.css        design tokens + every theme
+threads.css       background animation container
+src/util.js       DOM + formatting helpers
+src/indicators.js SMA, EMA, RSI, MACD, Bollinger, ATR, Stoch, ADX, VWAP, OBV…
+src/state.js      the single shared state object
+src/engine.js     dataset generation, CSV/Yahoo parsing, rule DSL, backtest engine
+src/charts.js     canvas rendering, zoom/pan, accessible data tables
+src/app.js        UI wiring, themes, exports
+src/boot.js       applies the saved theme before the first paint
+src/threads.js    WebGL background animation
+functions/        GitHub Pages Function for the Yahoo proxy
+legacy/streamlit/ the original Python/Streamlit app, kept for reference
+tests/            node:test suites (engine golden values, WCAG contrast, privacy)
+scripts/          lint + Windows auto-start installer
+deploy/           systemd unit
+start.bat         Windows: start the server and open the browser
+start.sh          macOS / Linux: same
+Dockerfile        container image
+server.py         static server + Yahoo Finance proxy
+```
+
+## 7. Develop
+
+```bash
+npm run lint      # syntax + hygiene checks
+npm test          # engine golden tests, colour contrast tests, privacy tests
+npm run check     # both
+```
+
+* `tests/engine.test.mjs` pins the backtest results of every universe, so
+  a change in the engine has to be a deliberate one.
+* `tests/contrast.test.mjs` fails the build if any colour pair drops
+  below WCAG AA.
+* `tests/privacy.test.mjs` fails the build if analytics, cookies, extra
+  storage keys, CSV uploads, query-string logging or unescaped values
+  come back.
+
+## 8. The original Streamlit app
 
 The repository started life as a Python/Streamlit backtester. It still
 lives in [`legacy/streamlit/`](legacy/) as a reference implementation of
 the same engine — the web workbench is a port of it, not a rewrite from
 scratch. Nothing in the root project imports from that folder.
-
-The repository started life as a Python/Streamlit backtester. It still
-lives in [`legacy/streamlit/`](legacy/) as a reference implementation of
-the same engine — the web workbench is a port of it, not a rewrite from
-scratch. Nothing in the root project imports from that folder.
-
-## Design rules worth keeping
-
-* Colours live in tokens only; the contrast test fails the build if a
-  pair drops below WCAG AA.
-* Every chart has a `<details>` data table so the numbers are reachable
-  without a mouse.
-* The engine is pure and has no DOM dependency, which is why it can be
-  unit tested in Node.
-* Built-in universes must stay labelled as simulated.
 
 ## License
 
