@@ -53,14 +53,27 @@ systemd or a hosted platform.
 Everything works on the published site: the simulated universes, custom
 CSV files, every chart, the themes and the exports.
 
-**Yahoo Finance on Pages** is served by a Pages Function
-(`functions/api/yahoo.js`). Pages Functions are only enabled when the site
-source is set to *GitHub Actions* — the API cannot toggle it, so if the
-source is still *Deploy from a branch*, switch it in the UI once and
-re-run the `Deploy to GitHub Pages` workflow. Until then the app shows a
-clear message instead of failing silently. If you would rather skip
-Pages entirely, deploy the Python server (next section) — it proxies
-Yahoo too.
+#### Where the Yahoo proxy runs
+
+GitHub Pages cannot execute Python — it only runs static assets plus
+*Pages Functions* (JavaScript). So the proxy for the Pages site is the
+Pages Function in `functions/api/yahoo.js`, which is the same job
+`server.py` does locally.
+
+Pages Functions are only mounted when the site source is set to
+**GitHub Actions** (Settings → Pages → Build and deployment → Source).
+The REST API cannot toggle that, so it is the one manual click in this
+README. Until it is set, the app says so instead of failing silently.
+
+If you would rather run the real `server.py`, deploy it anywhere that
+runs Python (Render, Railway, Fly, a VPS) — it starts automatically and
+sends `Access-Control-Allow-Origin: *`, so the Pages site can use it.
+Point the app at it in two ways:
+
+* open the site with `?api=https://your-app.onrender.com`, or
+* open the **Deployment** panel in the left rail and paste the base URL.
+
+Both remember the choice in `localStorage`.
 
 ### Any Python host (Render, Railway, Fly, Heroku…)
 
@@ -68,6 +81,11 @@ Yahoo too.
 other platforms the start command is `python server.py` (see `Procfile`).
 The server reads `PORT` from the environment and binds `0.0.0.0` when it
 is set.
+
+This is the way to get the *real* `server.py` running automatically for
+users of the GitHub Pages site: deploy it here, then point the Pages site
+at it with `?api=https://your-app.onrender.com` (or the Deployment
+panel in the left rail).
 
 ```bash
 # Render blueprint (from the repo root)

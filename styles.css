@@ -558,6 +558,29 @@ button { cursor: pointer; }
 .yahoo-row input { flex: 1 1 auto; min-width: 0; }
 .yahoo-row .lab-btn { flex: 0 0 auto; height: 2rem; padding: 0 .7rem; }
 .file-note.is-error { color: var(--warn); }
+.rail-advanced {
+  margin-top: .55rem;
+  padding-top: .45rem;
+  border-top: 1px solid var(--line-soft);
+}
+.rail-advanced > summary {
+  cursor: pointer;
+  font-size: .62rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.rail-advanced > summary:hover { color: var(--accent-ui); }
+.rail-advanced > summary:focus-visible { outline: 2px solid var(--accent-ui); outline-offset: 2px; }
+.rail-advanced .field { margin-top: .5rem; }
+.rail-advanced .file-row { margin-top: .35rem; }
+.rail-advanced code {
+  padding: 0 .18rem;
+  border-radius: .2rem;
+  background: var(--surface-3);
+  font-size: .95em;
+}
 .lab-btn:disabled { opacity: .55; cursor: wait; }
 .rail-meta {
   margin: .55rem 0 0;

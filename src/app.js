@@ -35,6 +35,29 @@
 
   function setStatus(text) { $('#runStatus').textContent = text; }
 
+  function bindDeployment() {
+    var input = $('#yProxy');
+    var save = $('#yProxySave');
+    var clear = $('#yProxyClear');
+    if (!input) return;
+    input.value = apiBase();
+    if (save) {
+      save.addEventListener('click', function () {
+        var value = String(input.value || '').trim().replace(/\/+$/, '');
+        try { localStorage.setItem(API_BASE_KEY, value); } catch (e) {}
+        input.value = value;
+        setYahooNote(value ? 'Yahoo proxy set to ' + value : 'Using the bundled proxy.');
+      });
+    }
+    if (clear) {
+      clear.addEventListener('click', function () {
+        try { localStorage.removeItem(API_BASE_KEY); } catch (e) {}
+        input.value = '';
+        setYahooNote('Using the bundled proxy.');
+      });
+    }
+  }
+
   function dataSourceLabel() {
     if (state.source === 'yahoo') return 'Yahoo Finance · adjusted daily';
     if (state.source === 'csv') return 'Custom CSV';
@@ -53,6 +76,29 @@
 
   var yahooReq = 0;
   var YAHOO_PERIODS = { 252: '1y', 504: '2y', 1260: '5y', 2520: '10y', 5040: '20y' };
+  var API_BASE_KEY = 'falcon-api-base';
+
+  /* Where the Yahoo proxy lives.
+     1. ?api=https://host  (shareable link, stored for the session)
+     2. a saved base URL from the Deployment panel
+     3. the bundled proxy: /api/yahoo served by the Pages function or server.py */
+  function apiBase() {
+    var fromUrl = '';
+    try {
+      fromUrl = new URLSearchParams(location.search).get('api') || '';
+    } catch (e) {}
+    if (fromUrl) {
+      try { localStorage.setItem(API_BASE_KEY, fromUrl); } catch (e) {}
+      return fromUrl.replace(/\/+$/, '');
+    }
+    try { return (localStorage.getItem(API_BASE_KEY) || '').replace(/\/+$/, ''); } catch (e) { return ''; }
+  }
+
+  function yahooEndpoint() {
+    if (location.protocol === 'file:') return 'http://127.0.0.1:8765/api/yahoo';
+    var base = apiBase();
+    return base ? base + '/api/yahoo' : 'api/yahoo';
+  }
 
   function setYahooNote(text, isError) {
     var el = $('#yNote');
@@ -98,7 +144,7 @@
 
     var req = ++yahooReq;
     var periodKey = period || state.period;
-    var endpoint = location.protocol === 'file:' ? 'http://127.0.0.1:8765/api/yahoo' : 'api/yahoo';
+    var endpoint = yahooEndpoint();
     var btn = $('#yLoad');
     btn.disabled = true;
     btn.textContent = 'Loading…';
@@ -112,7 +158,7 @@
           var payload;
           try { payload = JSON.parse(text); } catch (e) {
             throw new Error(response.status === 404
-              ? 'Yahoo proxy not available here. Run "python server.py" locally, or enable the Pages function (Settings → Pages → Source: GitHub Actions), or deploy with render.yaml.'
+              ? 'Yahoo proxy not available here. Run "python server.py" locally, enable the Pages function (Settings → Pages → Source: GitHub Actions), or point the Deployment panel at a hosted copy of server.py.'
               : 'Yahoo proxy returned an invalid response.');
           }
           if (!response.ok && !(payload && payload.chart)) {
@@ -979,6 +1025,7 @@
     bindThemePicker();
     initThreads();
     bindBackgroundToggle();
+    bindDeployment();
     loadDataset('spy', 1260);
     applyTemplate('Golden Cross', { run: false });
     renderAll();

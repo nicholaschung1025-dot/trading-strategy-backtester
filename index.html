@@ -85,6 +85,15 @@
               <input type="file" id="csvFile" accept=".csv,text/csv">
               <span class="file-note">CSV columns: date, open, high, low, close, volume</span>
             </div>
+            <details class="rail-advanced">
+              <summary>Deployment</summary>
+              <label class="field"><span>Yahoo proxy base URL</span><input type="url" id="yProxy" inputmode="url" spellcheck="false" placeholder="https://your-app.onrender.com"></label>
+              <span class="file-note">Leave empty to use the bundled proxy. Point it at a hosted copy of <code>server.py</code> when GitHub Pages cannot run the function.</span>
+              <div class="file-row">
+                <button class="lab-btn tiny" id="yProxySave" type="button">Save proxy</button>
+                <button class="lab-btn tiny" id="yProxyClear" type="button">Use default</button>
+              </div>
+            </details>
             <p class="rail-meta" id="dtMeta">—</p>
           </section>
 
