@@ -1,6 +1,10 @@
 /**
  * GitHub Pages Function — proxies Yahoo Finance chart history.
  * Mounted at /api/yahoo (same contract as server.py).
+ *
+ * Privacy: the request is forwarded to Yahoo and nothing is stored,
+ * logged or cached. Only the ticker symbol travels - no cookies, no
+ * identifiers, no analytics.
  */
 const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,24}$/;
 const PERIOD_YEARS = { '1y': 1, '2y': 2, '5y': 5, '10y': 10, '20y': 20 };
@@ -42,7 +46,14 @@ export async function onRequest({ request }) {
     const text = await upstream.text();
     return new Response(text, {
       status: upstream.status,
-      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300' },
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        // Never cache a market data response: it would keep the queried
+        // symbol in the CDN cache.
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'no-referrer',
+      },
     });
   } catch (err) {
     return json({ error: 'Could not reach Yahoo Finance' }, 502);

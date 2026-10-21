@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f9a93c'/%3E%3Cstop offset='.55' stop-color='%23ff7c1c'/%3E%3Cstop offset='1' stop-color='%23ff5a00'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='url(%23g)'%3E%3Ccircle cx='100' cy='70' r='49'/%3E%3Ccircle cx='70' cy='125' r='49'/%3E%3Ccircle cx='131' cy='125' r='49'/%3E%3C/g%3E%3Cpath d='M100 54Q104 98 132 105Q104 112 100 156Q96 112 68 105Q96 98 100 54Z' fill='%2312100e'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="threads.css">
 <link rel="stylesheet" href="styles.css">
-<script>(function () { try { var t = localStorage.getItem('falcon-theme'); if (t && t !== 'ember') document.documentElement.setAttribute('data-theme', t); } catch (e) {} })();</script>
+<script src="src/boot.js"></script>
 </head>
 <body>
   <div class="threads-bg threads-container" id="threadsBg" aria-hidden="true"></div>
@@ -48,10 +48,10 @@
             </svg>
           </button>
           <div class="theme-picker" role="group" aria-label="Colour theme">
-            <button class="theme-dot" type="button" data-theme="ember" style="--dot:#ff6900" title="Ember" aria-label="Ember theme" aria-pressed="true"></button>
-            <button class="theme-dot" type="button" data-theme="slate" style="--dot:#2f6feb" title="Slate" aria-label="Slate theme" aria-pressed="false"></button>
-            <button class="theme-dot" type="button" data-theme="forest" style="--dot:#1f7a4d" title="Forest" aria-label="Forest theme" aria-pressed="false"></button>
-            <button class="theme-dot" type="button" data-theme="midnight" style="--dot:#ff8a3d" title="Midnight" aria-label="Midnight theme" aria-pressed="false"></button>
+            <button class="theme-dot" type="button" data-theme="ember" title="Ember" aria-label="Ember theme" aria-pressed="true"></button>
+            <button class="theme-dot" type="button" data-theme="slate" title="Slate" aria-label="Slate theme" aria-pressed="false"></button>
+            <button class="theme-dot" type="button" data-theme="forest" title="Forest" aria-label="Forest theme" aria-pressed="false"></button>
+            <button class="theme-dot" type="button" data-theme="midnight" title="Midnight" aria-label="Midnight theme" aria-pressed="false"></button>
           </div>
           <button class="lab-btn solid" type="button" id="runBtn">Run backtest</button>
         </div>
@@ -94,6 +94,7 @@
                 <button class="lab-btn tiny" id="yProxyClear" type="button">Use default</button>
               </div>
             </details>
+            <p class="rail-privacy">No tracking, no cookies, no analytics. Your CSV is read in this browser and never uploaded. Only the ticker you type is sent to the proxy.</p>
             <p class="rail-meta" id="dtMeta">—</p>
           </section>
 

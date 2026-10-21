@@ -61,10 +61,10 @@
   function markerTipHtml(marker) {
     var tr = marker.trade;
     if (marker.kind === 'entry') {
-      return '<b>Entry</b> ' + isoDate(tr.entryDate) + ' · ' + fmtPrice(tr.entryPrice) + ' · ' + fmtShares(tr.shares) + ' sh';
+      return '<b>Entry</b> ' + esc(isoDate(tr.entryDate)) + ' · ' + esc(fmtPrice(tr.entryPrice)) + ' · ' + esc(fmtShares(tr.shares)) + ' sh';
     }
-    return '<b>Exit</b> ' + isoDate(tr.exitDate) + ' · ' + fmtPrice(tr.exitPrice) + ' · ' +
-      (tr.pnl >= 0 ? '+' : '') + tr.retPct.toFixed(2) + '% · ' + tr.reason;
+    return '<b>Exit</b> ' + esc(isoDate(tr.exitDate)) + ' · ' + esc(fmtPrice(tr.exitPrice)) + ' · ' +
+      (tr.pnl >= 0 ? '+' : '') + esc(tr.retPct.toFixed(2)) + '% · ' + esc(tr.reason);
   }
 
   function showChartTip(html, clientX, clientY) {

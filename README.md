@@ -141,7 +141,53 @@ Dockerfile        container image
 server.py         static server + Yahoo Finance proxy
 ```
 
+## Data & privacy
+
+**What the app sends, and where**
+
+| Data | Where it goes | Notes |
+| --- | --- | --- |
+| Your uploaded CSV | **Nowhere** | Read with `FileReader` in the browser, parsed locally, never uploaded. There is no upload endpoint. |
+| A ticker you type | The Yahoo proxy you configured | Only the symbol and the period. The proxy forwards it to `query1.finance.yahoo.com` and returns price history. |
+| Your theme, background-animation and proxy preferences | Your browser's `localStorage` | Three keys only: `falcon-theme`, `falcon-bg-anim`, `falcon-api-base`. Nothing else is stored, and the proxy one can be cleared from the Deployment panel. |
+
+**What the app never does**
+
+* No analytics, no telemetry, no beacons, no error reporting, no cookies.
+* No user accounts, no sessions, no server-side storage of anything.
+* No request to any host other than the proxy you configured (enforced by
+  `tests/privacy.test.mjs`).
+
+**Server-side hygiene** (`server.py`)
+
+* Access logs contain the path only — the query string, and therefore the
+  tickers people look up, is never written to the log.
+* The rate limiter keeps a truncated SHA-256 hash of the client address
+  instead of the address itself, and forgets it after the window.
+* Responses carry `Content-Security-Policy`, `Referrer-Policy:
+  no-referrer`, `X-Content-Type-Options`, `X-Frame-Options` and
+  `Permissions-Policy`. The CSP allows scripts only from the same
+  origin, so no third-party code can be injected.
+* The Pages Function caches nothing (`no-store`) and logs nothing.
+
+**Two things worth knowing**
+
+* Yahoo Finance data is for personal use; check their terms before
+  redistributing it commercially.
+* Git commits in this repository carry your e-mail address in the author
+  field. If you would rather keep it private, enable *Settings → Emails
+  → Keep my email address private* and rewrite the history with
+  `git filter-repo --email-callback 'git commit --email=%an <%anon@users.noreply.github.com>'`.
+
+Run `npm test` to verify all of the above — the privacy suite fails the
+build if any of these invariants is broken.
+
 ## The original Streamlit app
+
+The repository started life as a Python/Streamlit backtester. It still
+lives in [`legacy/streamlit/`](legacy/) as a reference implementation of
+the same engine — the web workbench is a port of it, not a rewrite from
+scratch. Nothing in the root project imports from that folder.
 
 The repository started life as a Python/Streamlit backtester. It still
 lives in [`legacy/streamlit/`](legacy/) as a reference implementation of
