@@ -112,7 +112,7 @@
           var payload;
           try { payload = JSON.parse(text); } catch (e) {
             throw new Error(response.status === 404
-              ? 'Yahoo proxy not found. Run "python server.py" locally, or deploy with the Pages function.'
+              ? 'Yahoo proxy not available here. Run "python server.py" locally, or enable the Pages function (Settings → Pages → Source: GitHub Actions), or deploy with render.yaml.'
               : 'Yahoo proxy returned an invalid response.');
           }
           if (!response.ok && !(payload && payload.chart)) {

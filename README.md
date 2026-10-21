@@ -32,12 +32,20 @@ npm run check             # both
 
 1. Push this repository to GitHub with the default branch `main`.
 2. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. The `Deploy to GitHub Pages` workflow publishes the site.
+3. The `Deploy to GitHub Pages` workflow publishes the site to
+   <https://nicholaschung1025-dot.github.io/trading-strategy-backtester/>.
 
-The Pages build ships a small Pages Function (`functions/api/yahoo.js`) that
-proxies Yahoo Finance, so real market history works on the deployed site
-too. (GitHub Pages is static-only; the function is the one server-side
-piece that is allowed.)
+Everything works on the published site: the simulated universes, custom
+CSV files, every chart, the themes and the exports.
+
+**Yahoo Finance on Pages** is served by a Pages Function
+(`functions/api/yahoo.js`). Pages Functions are only enabled when the site
+source is set to *GitHub Actions* — the API cannot toggle it, so if the
+source is still *Deploy from a branch*, switch it in the UI once and
+re-run the `Deploy to GitHub Pages` workflow. Until then the app shows a
+clear message instead of failing silently. If you would rather skip
+Pages entirely, deploy the Python server (next section) — it proxies
+Yahoo too.
 
 ### Any Python host (Render, Railway, Fly, Heroku…)
 
