@@ -1,0 +1,16 @@
+{
+  "name": "falcon-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Falcon Lab — a zero-dependency strategy backtesting workbench that runs from a static file server.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "lint": "node scripts/lint.mjs",
+    "check": "npm run lint && npm test",
+    "serve": "python server.py"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

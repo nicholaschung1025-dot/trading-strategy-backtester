@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: falcon-lab
+    runtime: python
+    plan: free
+    buildCommand: ""
+    startCommand: python server.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    healthCheckPath: /index.html
