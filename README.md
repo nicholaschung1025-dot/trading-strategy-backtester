@@ -165,22 +165,12 @@ Yahoo Finance lookup needs a proxy, and the proxy is Python, so the app
 runs from a server you start yourself. The options below are all ways of
 doing that on a machine or a host you control.
 
-### Docker (on your own machine)
+### Docker, systemd and the plain server
 
-```bash
-docker compose up -d
-```
-
-`restart: unless-stopped`, so it comes back after a reboot.
-
-### Linux VPS (systemd)
-
-```bash
-sudo cp deploy/falcon-lab.service /etc/systemd/system/
-sudo systemctl enable --now falcon-lab
-```
-
-Runs as a service on `PORT=8765`.
+The three ways to run it on a machine you control are already listed in
+[2. Start it](#2-start-it): `docker compose up -d` for a container,
+`deploy/falcon-lab.service` for a systemd service, and `python
+server.py` for everything else.
 
 ### Any Python host (Render, Railway, Fly, Heroku…)
 

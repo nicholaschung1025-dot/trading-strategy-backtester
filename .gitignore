@@ -20,7 +20,8 @@ coverage/
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 *.swp
 
 # Local env
