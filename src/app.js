@@ -81,7 +81,7 @@
   /* Where the Yahoo proxy lives.
      1. ?api=https://host  (shareable link, stored for the session)
      2. a saved base URL from the Deployment panel
-     3. the bundled proxy: /api/yahoo served by the Pages function or server.py */
+     3. the bundled proxy: /api/yahoo served by server.py */
   function apiBase() {
     var fromUrl = '';
     try {
@@ -158,7 +158,7 @@
           var payload;
           try { payload = JSON.parse(text); } catch (e) {
             throw new Error(response.status === 404
-              ? 'Yahoo proxy not available here. Run "python server.py" locally, enable the Pages function (Settings → Pages → Source: GitHub Actions), or point the Deployment panel at a hosted copy of server.py.'
+              ? 'Yahoo proxy not available here. Run "python server.py" locally, or point the Deployment panel at a hosted copy of server.py.'
               : 'Yahoo proxy returned an invalid response.');
           }
           if (!response.ok && !(payload && payload.chart)) {

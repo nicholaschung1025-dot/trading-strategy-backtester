@@ -4,7 +4,6 @@ WORKDIR /app
 
 COPY server.py index.html styles.css threads.css ./
 COPY src ./src
-COPY functions ./functions
 
 ENV HOST=0.0.0.0 \
     PORT=8765 \

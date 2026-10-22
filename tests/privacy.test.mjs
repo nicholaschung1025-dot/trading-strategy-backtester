@@ -11,7 +11,6 @@ const charts = read('src/charts.js');
 const engine = read('src/engine.js');
 const util = read('src/util.js');
 const server = read('server.py');
-const fn = read('functions/api/yahoo.js');
 const appSources = { 'src/app.js': app, 'src/charts.js': charts, 'src/engine.js': engine, 'src/util.js': util };
 
 test('no analytics, beacons or third party endpoints', () => {
@@ -20,7 +19,7 @@ test('no analytics, beacons or third party endpoints', () => {
     /mixpanel/i, /sentry\.io/i, /hotjar/i, /navigator\.sendBeacon/i,
     /new\s+WebSocket/i, /EventSource/i, /document\.cookie/i,
   ];
-  Object.entries({ ...appSources, 'index.html': html, 'functions/api/yahoo.js': fn }).forEach(([file, src]) => {
+  Object.entries({ ...appSources, 'index.html': html }).forEach(([file, src]) => {
     banned.forEach((re) => {
       assert.equal(re.test(src), false, `${file} must not use ${re}`);
     });
@@ -79,13 +78,6 @@ test('the server sends hardening headers', () => {
   ['Content-Security-Policy', 'Referrer-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'Permissions-Policy']
     .forEach((h) => assert.match(server, new RegExp(h), `missing header ${h}`));
   assert.match(server, /frame-ancestors 'none'/);
-});
-
-test('the Pages function caches nothing and logs nothing', () => {
-  assert.match(fn, /'Cache-Control': 'no-store'/);
-  assert.equal(/console\./.test(fn), false, 'the function must not log');
-  assert.match(fn, /SYMBOL_RE/, 'symbols must be validated');
-  assert.match(fn, /PERIOD_YEARS/, 'periods must be validated');
 });
 
 test('the page has no inline script, style attribute or event handler', () => {

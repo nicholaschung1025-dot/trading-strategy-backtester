@@ -7,6 +7,10 @@
 Python file serves it, no build step, no npm install, and the whole
 interface is driven by a single set of design tokens.
 
+It is a **local tool**: clone it and run it on your own machine. There is
+no public website, because the Yahoo Finance lookup needs the Python
+proxy in `server.py` — the browser cannot call Yahoo directly (CORS).
+
 ![Overview of the Falcon Lab workbench](docs/preview.png)
 
 ---
@@ -154,20 +158,29 @@ universe and puts the two equity curves side by side.
 * **Custom CSV** — `date, open, high, low, close, volume`; at least 60
   rows; parsed locally.
 
-## 5. Deploy it (optional)
+## 5. Run it on your own machine (optional)
 
-### GitHub Pages
+Falcon Lab is a **local-first tool** — there is no public website. The
+Yahoo Finance lookup needs a proxy, and the proxy is Python, so the app
+runs from a server you start yourself. The options below are all ways of
+doing that on a machine or a host you control.
 
-1. Push to GitHub with the default branch `main`.
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. The `Deploy to GitHub Pages` workflow publishes the site.
+### Docker (on your own machine)
 
-GitHub Pages cannot execute Python — it runs static assets plus *Pages
-Functions* (JavaScript). The proxy for a Pages site is therefore
-`functions/api/yahoo.js`, which does the same job as `server.py`. Pages
-Functions are only mounted when the site source is set to **GitHub
-Actions**; the REST API cannot toggle that, so it is the one manual step.
-Until it is set, the app says so instead of failing silently.
+```bash
+docker compose up -d
+```
+
+`restart: unless-stopped`, so it comes back after a reboot.
+
+### Linux VPS (systemd)
+
+```bash
+sudo cp deploy/falcon-lab.service /etc/systemd/system/
+sudo systemctl enable --now falcon-lab
+```
+
+Runs as a service on `PORT=8765`.
 
 ### Any Python host (Render, Railway, Fly, Heroku…)
 
@@ -212,7 +225,6 @@ remember the choice in `localStorage`.
   no-referrer`, `X-Content-Type-Options`, `X-Frame-Options` and
   `Permissions-Policy`. The CSP allows scripts only from the same
   origin, so no third-party code can be injected.
-* The Pages Function caches nothing (`no-store`) and logs nothing.
 
 **Two things worth knowing**
 
@@ -240,7 +252,6 @@ src/charts.js     canvas rendering, zoom/pan, accessible data tables
 src/app.js        UI wiring, themes, exports
 src/boot.js       applies the saved theme before the first paint
 src/threads.js    WebGL background animation
-functions/        GitHub Pages Function for the Yahoo proxy
 legacy/streamlit/ the original Python/Streamlit app, kept for reference
 tests/            node:test suites (engine golden values, WCAG contrast, privacy)
 scripts/          lint + Windows auto-start installer
