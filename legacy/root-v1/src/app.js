@@ -6,17 +6,32 @@
         money = U.money, money0 = U.money0, fmtShares = U.fmtShares, compactMoney = U.compactMoney;
   var $ = U.$, $$ = U.$$;
   var state = Falcon.state;
-  var TEMPLATES = E.TEMPLATES, IND_LABEL = E.IND_LABEL, IND_KEYS = E.IND_KEYS,
+  var DEFS = E.DEFS, TEMPLATES = E.TEMPLATES, IND_LABEL = E.IND_LABEL, IND_KEYS = E.IND_KEYS,
         OPS = E.OPS, OP_LABEL = E.OP_LABEL;
-  var parseCsv = E.parseCsv, parseYahooChart = E.parseYahooChart,
+  var generateDataset = E.generateDataset, parseCsv = E.parseCsv, parseYahooChart = E.parseYahooChart,
         buildSeries = E.buildSeries, execute = E.execute;
   var fitCanvas = C.fitCanvas, scheduleDraws = C.scheduleDraws, resetChartView = C.resetChartView,
         resetAllChartViews = C.resetAllChartViews, drawCmp = C.drawCmp, bindChartZoom = C.bindChartZoom,
         chartPalette = C.chartPalette;
   /* ---------- ui state, rendering, themes, exports and wiring ---------- */
-  /* Real-ticker presets. Every dataset is fetched live from Yahoo Finance. */
-  var PRESETS = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'META', 'GOOGL', 'SPY', 'QQQ', 'BTC-USD', 'ETH-USD', '0700.HK'];
-  var DEFAULT_TICKER = 'SPY';
+  function loadDataset(id, period) {
+    var def = DEFS[id];
+    if (!def) return;
+    state.datasetId = id;
+    state.period = period;
+    state.source = 'synthetic';
+    state.yahoo = null;
+    state.bars = generateDataset(def, period);
+    state.meta = { ticker: def.ticker, name: def.name };
+    clearCsvSelection();
+    var sel = $('#dtSet');
+    if (sel) {
+      ['yahoo', 'custom'].forEach(function (value) {
+        var option = sel.querySelector('option[value="' + value + '"]');
+        if (option) option.remove();
+      });
+    }
+  }
 
   function setStatus(text) { $('#runStatus').textContent = text; }
 
@@ -46,7 +61,7 @@
   function dataSourceLabel() {
     if (state.source === 'yahoo') return 'Yahoo Finance · adjusted daily';
     if (state.source === 'csv') return 'Custom CSV';
-    return 'No data loaded';
+    return 'Simulated series · not real market data';
   }
 
   function updateChrome() {
@@ -97,24 +112,21 @@
     if (name) name.textContent = 'No file selected';
   }
 
-  /* Shared Yahoo proxy fetch: returns the parsed chart payload. */
-  function fetchYahooBars(symbol, periodKey) {
-    var endpoint = yahooEndpoint();
-    return fetch(endpoint + '?symbol=' + encodeURIComponent(symbol) + '&period=' + encodeURIComponent(YAHOO_PERIODS[periodKey] || '5y'), { headers: { Accept: 'application/json' } })
-      .then(function (response) {
-        return response.text().then(function (text) {
-          var payload;
-          try { payload = JSON.parse(text); } catch (e) {
-            throw new Error(response.status === 404
-              ? 'Yahoo proxy not available here. Run "python server.py" locally, or point the Deployment panel at a hosted copy of server.py.'
-              : 'Yahoo proxy returned an invalid response.');
-          }
-          if (!response.ok && !(payload && payload.chart)) {
-            throw new Error((payload && payload.error) || 'Yahoo Finance request failed (' + response.status + ')');
-          }
-          return payload;
-        });
-      });
+  function setUniverseOption(value, label) {
+    var sel = $('#dtSet');
+    ['yahoo', 'custom'].forEach(function (key) {
+      if (key === value) return;
+      var stale = sel.querySelector('option[value="' + key + '"]');
+      if (stale) stale.remove();
+    });
+    var option = sel.querySelector('option[value="' + value + '"]');
+    if (!option) {
+      option = document.createElement('option');
+      option.value = value;
+      sel.appendChild(option);
+    }
+    option.textContent = label;
+    sel.value = value;
   }
 
   function loadYahoo(query, period) {
@@ -132,6 +144,7 @@
 
     var req = ++yahooReq;
     var periodKey = period || state.period;
+    var endpoint = yahooEndpoint();
     var btn = $('#yLoad');
     btn.disabled = true;
     btn.textContent = 'Loading…';
@@ -139,20 +152,35 @@
     setYahooNote('Fetching ' + symbol.toUpperCase() + ' from Yahoo Finance…');
     setStatus('Fetching ' + symbol.toUpperCase() + ' from Yahoo Finance…');
 
-    fetchYahooBars(symbol, periodKey)
+    fetch(endpoint + '?symbol=' + encodeURIComponent(symbol) + '&period=' + encodeURIComponent(YAHOO_PERIODS[periodKey] || '5y'), { headers: { Accept: 'application/json' } })
+      .then(function (response) {
+        return response.text().then(function (text) {
+          var payload;
+          try { payload = JSON.parse(text); } catch (e) {
+            throw new Error(response.status === 404
+              ? 'Yahoo proxy not available here. Run "python server.py" locally, or point the Deployment panel at a hosted copy of server.py.'
+              : 'Yahoo proxy returned an invalid response.');
+          }
+          if (!response.ok && !(payload && payload.chart)) {
+            throw new Error((payload && payload.error) || 'Yahoo Finance request failed (' + response.status + ')');
+          }
+          return payload;
+        });
+      })
       .then(function (payload) {
         if (req !== yahooReq) return;
         var data = parseYahooChart(payload, symbol);
         state.period = periodKey;
         state.source = 'yahoo';
         state.yahoo = { symbol: data.ticker };
+        state.datasetId = 'yahoo';
         state.bars = data.bars;
         state.meta = { ticker: data.ticker, name: data.name };
         clearCsvSelection();
         $('#ySymbol').value = data.ticker;
         $('#dtPeriod').disabled = false;
         $('#dtPeriod').value = String(state.period);
-        syncPresetChips();
+        setUniverseOption('yahoo', 'Yahoo · ' + data.ticker);
         setYahooNote('Yahoo Finance · adjusted daily · ' + data.bars.length.toLocaleString() + ' bars');
         runNow();
         setStatus('Yahoo · ' + data.ticker + ' · ' + data.bars.length.toLocaleString() + ' bars');
@@ -175,50 +203,22 @@
       });
   }
 
-  function buildPresets() {
-    var row = $('#presetRow');
-    if (!row) return;
-    row.textContent = '';
-    PRESETS.forEach(function (t) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'preset-chip';
-      b.dataset.ticker = t;
-      b.textContent = t;
-      row.appendChild(b);
+  function buildDatasetSelect() {
+    var sel = $('#dtSet');
+    Object.keys(DEFS).forEach(function (id) {
+      var o = document.createElement('option');
+      o.value = id;
+      o.textContent = DEFS[id].name + ' · ' + DEFS[id].ticker;
+      sel.appendChild(o);
     });
-    row.addEventListener('click', function (e) {
-      var chip = e.target.closest('.preset-chip');
-      if (!chip) return;
-      loadYahoo(chip.dataset.ticker, state.period);
-    });
-  }
-
-  function syncPresetChips() {
-    var active = state.yahoo ? state.yahoo.symbol : '';
-    $$('.preset-chip').forEach(function (b) {
-      b.setAttribute('aria-pressed', String(b.dataset.ticker === active));
-    });
-  }
-
-  /* Compare presets: one tap loads the same period and runs the overlay. */
-  function buildCmpPresets() {
-    var row = $('#cmpPresetRow');
-    if (!row) return;
-    row.textContent = '';
-    PRESETS.forEach(function (t) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'preset-chip';
-      b.dataset.ticker = t;
-      b.textContent = t;
-      row.appendChild(b);
-    });
-    row.addEventListener('click', function (e) {
-      var chip = e.target.closest('.preset-chip');
-      if (!chip) return;
-      $('#cmpSymbol').value = chip.dataset.ticker;
-      runCompare();
+    sel.value = state.datasetId;
+    var cmp = $('#cmpSet');
+    Object.keys(DEFS).forEach(function (id) {
+      var o = document.createElement('option');
+      o.value = id;
+      o.textContent = DEFS[id].name + ' · ' + DEFS[id].ticker;
+      if (id === 'spy') o.selected = true;
+      cmp.appendChild(o);
     });
   }
 
@@ -371,7 +371,6 @@
 
   function runNow() {
     clearTimeout(runTimer);
-    if (!state.bars.length) { setStatus('Load a stock to begin'); return; }
     try {
       state.series = buildSeries(state.bars, state.risk.mtf);
       state.result = execute(state.bars, state.series, state.rules, state.logic, state.risk);
@@ -390,8 +389,8 @@
     }
   }
 
-  function statTile(k, v, cls, sub, extra) {
-    return '<div class="stat ' + (extra || '') + '"><span class="k">' + esc(k) + '</span><span class="v ' + (cls || '') + '">' + v +
+  function statTile(k, v, cls, sub) {
+    return '<div class="stat"><span class="k">' + esc(k) + '</span><span class="v ' + (cls || '') + '">' + v +
       '</span>' + (sub ? '<span class="sub">' + sub + '</span>' : '') + '</div>';
   }
 
@@ -433,10 +432,7 @@
       statTile('Calmar', m.calmar.toFixed(2), '', 'return / drawdown') +
       statTile('Avg win', money0(m.avgWin), '', 'best +' + m.bestTrade.toFixed(1) + '%') +
       statTile('Avg loss', money0(m.avgLoss), '', 'worst ' + m.worstTrade.toFixed(1) + '%') +
-      statTile('Fees paid', money0(m.fees), '', m.maxConsecWins + 'W / ' + m.maxConsecLosses + 'L streaks') +
-      statTile('Time in market', m.timeInMarket.toFixed(1) + '%', '',
-        state.result.trades.reduce(function (s, t) { return s + t.duration; }, 0) + ' of ' + r.equity.length + ' bars', 'span3') +
-      statTile('Avg hold', m.avgDuration.toFixed(1) + ' d', '', 'trading days in position', 'span3');
+      statTile('Fees paid', money0(m.fees), '', m.maxConsecWins + 'W / ' + m.maxConsecLosses + 'L streaks');
   }
 
   function renderTrades() {
@@ -655,7 +651,7 @@
     if (THEMES.indexOf(name) < 0) name = 'ember';
     if (name === 'ember') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', name);
-    document.documentElement.style.colorScheme = 'dark';
+    document.documentElement.style.colorScheme = name === 'midnight' ? 'dark' : 'light';
     try { localStorage.setItem(THEME_KEY, name); } catch (e) {}
     if (threads) threads.setOptions(threadColors());
     syncThemeButtons();
@@ -674,34 +670,8 @@
     $$('.theme-dot').forEach(function (btn) {
       btn.addEventListener('click', function () { applyTheme(btn.getAttribute('data-theme')); });
     });
-    document.documentElement.style.colorScheme = 'dark';
+    document.documentElement.style.colorScheme = currentTheme() === 'midnight' ? 'dark' : 'light';
     syncThemeButtons();
-  }
-
-  /* ---------- light / dark mode ---------- */
-  var MODE_KEY = 'falcon-mode';
-
-  function bindModeToggle() {
-    var btn = $('#modeBtn');
-    if (!btn) return;
-    var apply = function () {
-      var light = false;
-      try { light = localStorage.getItem(MODE_KEY) === 'light'; } catch (e) {}
-      if (light) document.documentElement.setAttribute('data-mode', 'light');
-      else document.documentElement.removeAttribute('data-mode');
-      btn.setAttribute('aria-pressed', String(light));
-      btn.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
-      btn.setAttribute('title', light ? 'Switch to dark mode' : 'Switch to light mode');
-      if (threads) threads.setOptions(threadColors());
-      renderHeatmap();
-      scheduleDraws();
-    };
-    btn.addEventListener('click', function () {
-      var toLight = document.documentElement.getAttribute('data-mode') !== 'light';
-      try { localStorage.setItem(MODE_KEY, toLight ? 'light' : 'dark'); } catch (e) {}
-      apply();
-    });
-    apply();
   }
 
   /* ───────────────────────── compare ───────────────────────── */
@@ -719,7 +689,7 @@
     if (state.compare && state.compare.sig && state.compare.sig !== compareSignature()) state.compare = null;
     if (!state.compare) {
       statsBox.innerHTML = '';
-      tableBox.innerHTML = '<p class="lab-empty">Type a ticker above, or tap a preset, and run the comparison.</p>';
+      tableBox.innerHTML = '<p class="lab-empty">Pick a second universe and run the comparison.</p>';
       var noteBox = $('#cmpNote');
       if (noteBox) { noteBox.hidden = true; noteBox.innerHTML = ''; }
       var cv = $('#cmpChart');
@@ -771,38 +741,26 @@
   }
 
   function runCompare() {
-    if (!state.result) { setStatus('Run a backtest first, then compare.'); return; }
-    var symbol = String($('#cmpSymbol').value || '').trim();
-    if (!symbol) { setStatus('Enter a ticker to compare against.'); return; }
-    if (!/^[A-Za-z0-9.^=-]{1,24}$/.test(symbol)) { setStatus('Use a ticker such as AAPL, BTC-USD, ^GSPC or 0700.HK.'); return; }
-    var btn = $('#cmpBtn');
-    btn.disabled = true;
-    btn.textContent = 'Loading…';
-    setStatus('Fetching ' + symbol.toUpperCase() + ' for comparison…');
-    fetchYahooBars(symbol, state.period)
-      .then(function (payload) {
-        var data = parseYahooChart(payload, symbol);
-        var series = buildSeries(data.bars, state.risk.mtf);
-        var result = execute(data.bars, series, state.rules, state.logic, state.risk);
-        state.compare = {
-          name: data.name, ticker: data.ticker, bars: data.bars, result: result,
-          sig: compareSignature(),
-          aStart: state.bars.length ? state.bars[0].time : 0,
-          aEnd: state.bars.length ? state.bars[state.bars.length - 1].time : 0,
-          bStart: data.bars.length ? data.bars[0].time : 0,
-          bEnd: data.bars.length ? data.bars[data.bars.length - 1].time : 0
-        };
-        resetChartView('cmpChart');
-        renderCompare();
-        setStatus('Comparing ' + state.meta.ticker + ' vs ' + data.ticker);
-      })
-      .catch(function (err) {
-        setStatus('Comparison: ' + (err.message || 'Yahoo Finance could not be reached.'));
-      })
-      .then(function () {
-        btn.disabled = false;
-        btn.textContent = 'Run comparison';
-      });
+    var id = $('#cmpSet').value;
+    if (!DEFS[id]) return;
+    try {
+      var bars = generateDataset(DEFS[id], state.period);
+      var series = buildSeries(bars, state.risk.mtf);
+      var result = execute(bars, series, state.rules, state.logic, state.risk);
+      state.compare = {
+        id: id, name: DEFS[id].name, ticker: DEFS[id].ticker, bars: bars, result: result,
+        sig: compareSignature(),
+        aStart: state.bars.length ? state.bars[0].time : 0,
+        aEnd: state.bars.length ? state.bars[state.bars.length - 1].time : 0,
+        bStart: bars.length ? bars[0].time : 0,
+        bEnd: bars.length ? bars[bars.length - 1].time : 0
+      };
+      resetChartView('cmpChart');
+      renderCompare();
+      setStatus('Comparing ' + state.meta.ticker + ' vs ' + DEFS[id].ticker);
+    } catch (err) {
+      setStatus('Comparison failed');
+    }
   }
 
   /* ───────────────────────── exports ───────────────────────── */
@@ -856,8 +814,6 @@
     lines.push('Capital: ' + money0(risk.capital) + ' · Commission: ' + risk.comm + '% · Slippage: ' + risk.slip + '%');
     lines.push('Position sizing: ' + (state.result.fractional ? 'fractional shares' : 'whole shares'));
     lines.push('Weekly filter: ' + (risk.mtf ? 'on' : 'off'));
-    lines.push('Time in market: ' + m.timeInMarket.toFixed(1) + '% of ' + state.bars.length + ' bars');
-    lines.push('Avg hold: ' + m.avgDuration.toFixed(1) + ' trading days');
     lines.push('');
     lines.push('PERFORMANCE');
     lines.push('Net P&L: ' + money0(m.netPnl));
@@ -960,11 +916,26 @@
       });
     });
 
+    $('#dtSet').addEventListener('change', function (e) {
+      if (e.target.value === 'custom' || e.target.value === 'yahoo') return;
+      $('#dtPeriod').disabled = false;
+      setYahooNote('Daily adjusted OHLCV · uses selected history');
+      loadDataset(e.target.value, state.period);
+      $('#dtPeriod').value = String(state.period);
+      runNow();
+    });
     $('#dtPeriod').addEventListener('change', function (e) {
       var period = Number(e.target.value);
-      state.period = period;
-      if (state.source === 'csv') return;
-      if (state.yahoo) loadYahoo(state.yahoo.symbol, period);
+      if (state.source === 'csv') {
+        state.period = period;
+        return;
+      }
+      if (state.source === 'yahoo' && state.yahoo) {
+        loadYahoo(state.yahoo.symbol, period);
+        return;
+      }
+      loadDataset(state.datasetId, period);
+      runNow();
     });
     $('#yLoad').addEventListener('click', function () { loadYahoo(null, state.period); });
     $('#ySymbol').addEventListener('keydown', function (e) {
@@ -1013,9 +984,11 @@
           state.bars = bars;
           state.source = 'csv';
           state.yahoo = null;
+          state.datasetId = 'custom';
           state.meta = { ticker: file.name.replace(/\.[^.]+$/, '').slice(0, 14).toUpperCase(), name: file.name.replace(/\.[^.]+$/, '') };
-          syncPresetChips();
+          setUniverseOption('custom', 'Custom · ' + state.meta.name);
           $('#dtPeriod').disabled = true;
+          $('#cmpSet').value = 'spy';
           runNow();
         } catch (err) {
           $('#csvName').textContent = file.name + ' — not loaded';
@@ -1026,13 +999,7 @@
     });
 
     $('#cmpBtn').addEventListener('click', runCompare);
-    $('#cmpSymbol').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        runCompare();
-      }
-    });
-    $('#cmpSymbol').addEventListener('input', function () { state.compare = null; renderCompare(); });
+    $('#cmpSet').addEventListener('change', function () { state.compare = null; renderCompare(); });
     $('#csvBtn').addEventListener('click', exportCsv);
     $('#reportBtn').addEventListener('click', exportReport);
 
@@ -1047,8 +1014,7 @@
   }
 
   function init() {
-    buildPresets();
-    buildCmpPresets();
+    buildDatasetSelect();
     buildTemplateSelect();
     bindRules('entry');
     bindRules('exit');
@@ -1057,13 +1023,13 @@
     syncLogicButtons();
     bindChartZoom();
     bindThemePicker();
-    bindModeToggle();
     initThreads();
     bindBackgroundToggle();
     bindDeployment();
+    loadDataset('spy', 1260);
     applyTemplate('Golden Cross', { run: false });
     renderAll();
-    loadYahoo(DEFAULT_TICKER, state.period);
+    runNow();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

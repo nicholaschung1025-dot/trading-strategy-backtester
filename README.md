@@ -1,23 +1,22 @@
 # Trading Strategy Backtester
 
-[![CI](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/ci.yml/badge.svg)](https://github.com/nicholaschung1025-dot/trading-strategy-backtester/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-c2410c.svg)](LICENSE)
 
 **Falcon Lab** — a zero-dependency trading-strategy backtester. One
 Python file serves it, no build step, no npm install, and the whole
 interface is driven by a single set of design tokens.
 
-> **New:** a redesigned dark/light interface lives in
-> [`falcon-lab-v2/`](falcon-lab-v2/) — same engine, new layout: preset
-> tickers in the rail, backtest overlay against any ticker, and a full
-> light mode. Run it with `python falcon-lab-v2/server.py` — see its
-> [README](falcon-lab-v2/README.md).
+The interface is the redesigned dark/light editorial layout (formerly
+`falcon-lab-v2/`, now the main project): preset tickers in the rail, a
+backtest overlay against any ticker, full light mode, and GSAP
+scroll-reveal motion that degrades gracefully offline. See
+[docs/v2-redesign-notes.md](docs/v2-redesign-notes.md) for what changed
+versus the original layout, which now lives in
+[`legacy/root-v1/`](legacy/root-v1).
 
 It is a **local tool**: clone it and run it on your own machine. There is
 no public website, because the Yahoo Finance lookup needs the Python
 proxy in `server.py` — the browser cannot call Yahoo directly (CORS).
-
-![Overview of the Falcon Lab workbench](docs/preview.png)
 
 ---
 
@@ -35,7 +34,6 @@ HTML/CSS/JavaScript. No `pip install`, no `npm install`, no build step.
 | Requirement | Version | Needed for |
 | --- | --- | --- |
 | [Python](https://www.python.org/downloads/) | 3.8 or newer | `server.py` — the local server and the Yahoo Finance proxy |
-| [Node.js](https://nodejs.org/) | 18 or newer | only `npm test` / `npm run lint` — see [8. Develop](#8-develop) |
 
 Check what you already have:
 
@@ -49,15 +47,10 @@ node --version      # optional
 ZIP**, unzip it and open the extracted folder — it runs from there
 unchanged.
 
-**Prefer Docker?**
-
-```bash
-git clone https://github.com/nicholaschung1025-dot/trading-strategy-backtester.git
-cd trading-strategy-backtester
-docker compose up -d
-```
-
-Then open <http://127.0.0.1:8765/index.html>.
+**Prefer Docker?** The container files (Dockerfile, docker-compose.yml)
+have moved to [`legacy/root-v1/`](legacy/root-v1) together with the
+previous interface; copy one back to the root if you want to containerise
+the current one.
 
 **Already cloned it earlier?** Update in place with `git pull`.
 
@@ -72,18 +65,9 @@ python server.py
 Then open <http://127.0.0.1:8765/index.html>.
 
 * Nothing to install — the server only uses the Python standard library.
-* `index.html` also opens straight from disk, but then the Yahoo Finance
-  lookup has no proxy to talk to, so only the simulated universes and
-  local CSV files work.
-
-| Platform | Command | Notes |
-| --- | --- | --- |
-| Windows, one click | `start.bat` | Starts the server minimised and opens the browser |
-| macOS / Linux | `./start.sh` | Same, opens the browser |
-| Windows, at every log on | `powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1` | Creates a scheduled task; remove it with `-Uninstall` |
-| Any host with Docker | `docker compose up -d` | `restart: unless-stopped`, so it returns after a reboot |
-| Linux VPS (systemd) | `sudo cp deploy/falcon-lab.service /etc/systemd/system/ && sudo systemctl enable --now falcon-lab` | Runs as a service on `PORT=8765` |
-| VS Code | `Terminal → Run Task… → "Serve Falcon Lab"` | Background task, F5 friendly |
+* `index.html` also opens straight from disk (`python -m http.server
+  8080` works too), but then the Yahoo Finance lookup has no proxy to
+  talk to, so only local CSV files work.
 
 The server reads `PORT` from the environment (default `8765`) and binds
 `0.0.0.0` whenever `PORT` is set, so it works unchanged behind Docker,
@@ -98,9 +82,12 @@ the results on the right.
 
 | Where | What you get | How |
 | --- | --- | --- |
-| Universe | A deterministic *simulated* series (tickers end in `-SIM`, e.g. `SPY-SIM`) | Pick one in **Data → Universe**, then set the history length |
-| Yahoo Finance | Real adjusted daily bars | Type a ticker (`AAPL`, `BTC-USD`, `^GSPC`, `0700.HK`) in **Data → Yahoo Finance** and press **Load** |
+| Preset tickers | AAPL, MSFT, NVDA, TSLA, AMZN, META, GOOGL, SPY, QQQ, BTC-USD, ETH-USD, 0700.HK | Click a chip in the left rail — SPY loads on start |
+| Yahoo Finance | Real adjusted daily bars | Type any Yahoo ticker (`^GSPC`, `0700.HK`, …) in **Data → Yahoo Finance** and press **Load** |
 | Custom CSV | Your own OHLCV file | **Data → Custom OHLCV → Choose CSV** — the file is parsed in your browser and never uploaded |
+
+There are no simulated universes in this layout — all data comes from
+Yahoo Finance (through the bundled proxy) or your own CSV.
 
 **② Describe the strategy**
 
@@ -135,8 +122,9 @@ The status line on the right shows the trade count and the total return.
 * **Trade log** — every closed trade with entry, exit, size, P&L, return,
   holding time and the reason it closed.
 
-**⑤ Compare** — the *Compare* tab runs the same rules against a second
-universe and puts the two equity curves side by side.
+**⑤ Compare** — the *Compare* tab takes any ticker: type `QQQ`,
+`BTC-USD`, `0700.HK`… and it fetches the same period, runs the identical
+rules, and puts the two equity curves side by side.
 
 **⑥ Export** — **Download trades CSV** for a spreadsheet, or
 **Download report TXT** for the full write-up (see
@@ -152,41 +140,21 @@ universe and puts the two equity curves side by side.
 | Trade details | Hover a triangle on the price chart |
 | Change theme | The colour dots in the header (saved in the browser) |
 | Pause the background | The wave button in the header |
+| Reduce motion | Honoured automatically via `prefers-reduced-motion` |
 
 ## 4. Where the data comes from
 
-* **Simulated universes** (default) — generated by the app itself from a
-  fixed seed, so the same date range always produces the same series.
-  They are labelled `-SIM` on purpose: they are *not* real prices.
 * **Yahoo Finance** — real adjusted daily history, fetched through the
   local proxy in `server.py` (the browser cannot call Yahoo directly
   because of CORS).
 * **Custom CSV** — `date, open, high, low, close, volume`; at least 60
   rows; parsed locally.
 
-## 5. Run it on your own machine (optional)
+## 5. Run it on a hosted platform (optional)
 
 Falcon Lab is a **local-first tool** — there is no public website. The
 Yahoo Finance lookup needs a proxy, and the proxy is Python, so the app
-runs from a server you start yourself. The options below are all ways of
-doing that on a machine or a host you control.
-
-### Docker, systemd and the plain server
-
-The three ways to run it on a machine you control are already listed in
-[2. Start it](#2-start-it): `docker compose up -d` for a container,
-`deploy/falcon-lab.service` for a systemd service, and `python
-server.py` for everything else.
-
-### Any Python host (Render, Railway, Fly, Heroku…)
-
-`render.yaml` is included, so Render can deploy with the Infra button. On
-other platforms the start command is `python server.py` (see
-`Procfile`).
-
-```bash
-render blueprint launch
-```
+runs from a server you start yourself.
 
 A hosted `server.py` starts on its own and sends
 `Access-Control-Allow-Origin: *`, so a static front end on another host
@@ -209,7 +177,7 @@ remember the choice in `localStorage`.
 * No analytics, no telemetry, no beacons, no error reporting, no cookies.
 * No user accounts, no sessions, no server-side storage of anything.
 * No request to any host other than the proxy you configured (enforced by
-  `tests/privacy.test.mjs`).
+  `legacy/root-v1/tests/privacy.test.mjs`).
 
 **Server-side hygiene** (`server.py`)
 
@@ -231,36 +199,39 @@ remember the choice in `localStorage`.
   → Keep my email address private* and rewrite the history with
   `git filter-repo --email-callback 'git commit --email=%an <%anon@users.noreply.github.com>'`.
 
-Run `npm test` to verify all of the above — the privacy suite fails the
-build if any of these invariants is broken.
+Run `npm test` inside [`legacy/root-v1/`](legacy/root-v1) to verify the
+server-side hygiene of that generation — the privacy suite fails the
+build if any of these invariants is broken. (The Node test suites pin the
+original layout's engine, whose metric logic this interface reuses.)
 
 ## 7. Layout
 
 ```
 index.html        markup only (no inline CSS or JS)
 styles.css        design tokens + every theme
-threads.css       background animation container
 src/util.js       DOM + formatting helpers
 src/indicators.js SMA, EMA, RSI, MACD, Bollinger, ATR, Stoch, ADX, VWAP, OBV…
 src/state.js      the single shared state object
-src/engine.js     dataset generation, CSV/Yahoo parsing, rule DSL, backtest engine
+src/engine.js     CSV/Yahoo parsing, rule DSL, backtest engine
 src/charts.js     canvas rendering, zoom/pan, accessible data tables
-src/app.js        UI wiring, themes, exports
+src/app.js        UI wiring, themes, exports, preset tickers
 src/boot.js       applies the saved theme before the first paint
 src/threads.js    WebGL background animation
+src/motion.js     GSAP scroll-reveal motion (self-hosted, reduced-motion aware)
+assets/           self-hosted GSAP, ScrollTrigger and web fonts (CSP-safe)
+docs/             data formats, redesign notes
 legacy/streamlit/ the original Python/Streamlit app, kept for reference
-tests/            node:test suites (engine golden values, WCAG contrast, privacy)
-scripts/          lint + Windows auto-start installer
-deploy/           systemd unit
-start.bat         Windows: start the server and open the browser
-start.sh          macOS / Linux: same
-Dockerfile        container image
+legacy/root-v1/   the previous interface + its tests, Docker and deploy files
 server.py         static server + Yahoo Finance proxy
 ```
 
 ## 8. Develop
 
+The engine's metric logic is shared with the original layout, whose test
+suites still guard it:
+
 ```bash
+cd legacy/root-v1
 npm run lint      # syntax + hygiene checks
 npm test          # engine golden tests, colour contrast tests, privacy tests
 npm run check     # both
@@ -274,12 +245,14 @@ npm run check     # both
   storage keys, CSV uploads, query-string logging or unescaped values
   come back.
 
-## 9. The original Streamlit app
+## 9. The original apps
 
-The repository started life as a Python/Streamlit backtester. It still
-lives in [`legacy/streamlit/`](legacy/) as a reference implementation of
-the same engine — the web workbench is a port of it, not a rewrite from
-scratch. Nothing in the root project imports from that folder.
+The repository started life as a Python/Streamlit backtester — it lives
+in [`legacy/streamlit/`](legacy/) as a reference implementation of the
+same engine. The previous web layout (the original workbench with
+simulated universes, plus its tests, Docker, systemd and auto-start
+files) is kept in [`legacy/root-v1/`](legacy/root-v1). Nothing in the
+root project imports from either folder.
 
 ## License
 
