@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Falcon Lab — Strategy Workbench</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ffb066'/%3E%3Cstop offset='.55' stop-color='%23ff7c1c'/%3E%3Cstop offset='1' stop-color='%23ff5a00'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='url(%23g)'%3E%3Ccircle cx='100' cy='70' r='49'/%3E%3Ccircle cx='70' cy='125' r='49'/%3E%3Ccircle cx='131' cy='125' r='49'/%3E%3C/g%3E%3Cpath d='M100 54Q104 98 132 105Q104 112 100 156Q96 112 68 105Q96 98 100 54Z' fill='%230b0a09'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<script src="src/boot.js"></script>
+<script src="assets/gsap.min.js" defer></script>
+<script src="assets/ScrollTrigger.min.js" defer></script>
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <div class="threads-bg threads-container" id="threadsBg" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="lab" id="lab">
+    <div class="lab-shell" aria-labelledby="labTitle">
+
+      <nav class="lab-nav" aria-label="Primary">
+        <div class="lab-id">
+          <span class="lab-mark" aria-hidden="true">
+            <svg viewBox="0 0 200 200" focusable="false">
+              <defs>
+                <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffb066"/>
+                  <stop offset=".55" stop-color="#ff7c1c"/>
+                  <stop offset="1" stop-color="#ff5a00"/>
+                </linearGradient>
+              </defs>
+              <g fill="url(#logoGrad)">
+                <circle cx="100" cy="70" r="49"/>
+                <circle cx="70" cy="125" r="49"/>
+                <circle cx="131" cy="125" r="49"/>
+              </g>
+              <path d="M100 54Q104 98 132 105Q104 112 100 156Q96 112 68 105Q96 98 100 54Z" fill="var(--logo-ink)"/>
+            </svg>
+          </span>
+          <div class="lab-wordmark">
+            <h1 id="labTitle">Falcon Lab</h1>
+            <p>Strategy workbench</p>
+          </div>
+        </div>
+
+        <div class="lab-actions">
+          <span class="lab-chip" id="labChip">—</span>
+          <button class="lab-btn icon-btn" type="button" id="modeBtn" aria-pressed="false" aria-label="Switch to light mode" title="Switch to light mode">
+            <svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.4"></circle>
+              <path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"></path>
+            </svg>
+            <svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"></path>
+            </svg>
+          </button>
+          <button class="lab-btn icon-btn" type="button" id="bgBtn" aria-pressed="true" aria-label="Pause background animation" title="Pause background animation">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path class="wave" d="M3 9.5c2.2-3 4.6-4.5 7.2-4.5 2.6 0 4 1.5 5.4 1.5 1.3 0 2.6-.8 3.4-1.8"></path>
+              <path class="wave" d="M3 14.5c2.2 3 4.6 4.5 7.2 4.5 2.6 0 4-1.5 5.4-1.5 1.3 0 2.6.8 3.4 1.8"></path>
+              <path class="slash" d="M4.5 4.5l15 15"></path>
+            </svg>
+          </button>
+          <div class="theme-picker" role="group" aria-label="Colour theme">
+            <button class="theme-dot" type="button" data-theme="ember" title="Ember" aria-label="Ember theme" aria-pressed="true"></button>
+            <button class="theme-dot" type="button" data-theme="slate" title="Slate" aria-label="Slate theme" aria-pressed="false"></button>
+            <button class="theme-dot" type="button" data-theme="forest" title="Forest" aria-label="Forest theme" aria-pressed="false"></button>
+            <button class="theme-dot" type="button" data-theme="midnight" title="Midnight" aria-label="Midnight theme" aria-pressed="false"></button>
+          </div>
+          <button class="lab-btn solid" type="button" id="runBtn">Run backtest</button>
+        </div>
+      </nav>
+
+      <div class="lab-body">
+
+        <aside class="lab-rail" aria-label="Configuration">
+          <div class="rail-inner">
+
+            <section class="rail-block">
+              <div class="rail-title"><span>Data</span></div>
+              <div class="preset-row" id="presetRow" role="group" aria-label="Popular tickers"></div>
+              <label class="field"><span>History</span><select id="dtPeriod">
+                <option value="252">1 year</option>
+                <option value="504">2 years</option>
+                <option value="1260" selected>5 years</option>
+                <option value="2520">10 years</option>
+                <option value="5040">20 years</option>
+              </select></label>
+              <div class="field yahoo-field">
+                <span>Yahoo Finance</span>
+                <div class="yahoo-row">
+                  <input id="ySymbol" type="text" autocomplete="off" spellcheck="false" placeholder="AAPL, BTC-USD, 0700.HK" aria-label="Yahoo Finance ticker" aria-describedby="yNote">
+                  <button class="lab-btn solid tiny" id="yLoad" type="button" aria-label="Load Yahoo Finance history">Load</button>
+                </div>
+                <span class="file-note" id="yNote" role="status">Fetches adjusted daily bars · needs the bundled proxy running</span>
+              </div>
+              <div class="field file-field"><span>Custom OHLCV</span>
+                <div class="file-row">
+                  <label class="file-btn" for="csvFile">Choose CSV</label>
+                  <span class="file-name" id="csvName">No file selected</span>
+                </div>
+                <input type="file" id="csvFile" accept=".csv,text/csv">
+                <span class="file-note">CSV columns: date, open, high, low, close, volume</span>
+              </div>
+              <details class="rail-advanced">
+                <summary>Deployment</summary>
+                <label class="field"><span>Yahoo proxy base URL</span><input type="url" id="yProxy" inputmode="url" spellcheck="false" placeholder="https://your-app.onrender.com"></label>
+                <span class="file-note">Leave empty to use the bundled proxy. Point it at a hosted copy of <code>server.py</code> when the local one is not running.</span>
+                <div class="file-row">
+                  <button class="lab-btn tiny" id="yProxySave" type="button">Save proxy</button>
+                  <button class="lab-btn tiny" id="yProxyClear" type="button">Use default</button>
+                </div>
+              </details>
+              <p class="rail-privacy">No tracking, no cookies, no analytics. Your CSV is read in this browser and never uploaded. Only the ticker you type is sent to the proxy.</p>
+              <p class="rail-meta" id="dtMeta">—</p>
+            </section>
+
+            <section class="rail-block">
+              <div class="rail-title"><span>Strategy</span></div>
+              <label class="field"><span>Template</span><select id="tplSel"></select></label>
+
+              <div class="logic"><span>Entry logic</span>
+                <div class="seg" data-logic="entry">
+                  <button type="button" data-val="AND" aria-pressed="true">AND</button>
+                  <button type="button" data-val="OR" aria-pressed="false">OR</button>
+                </div>
+              </div>
+              <div class="rules" id="entryRules"></div>
+              <button class="lab-btn tiny" id="addEntry" type="button">+ Entry rule</button>
+
+              <div class="logic"><span>Exit logic</span>
+                <div class="seg" data-logic="exit">
+                  <button type="button" data-val="AND" aria-pressed="true">AND</button>
+                  <button type="button" data-val="OR" aria-pressed="false">OR</button>
+                </div>
+              </div>
+              <div class="rules" id="exitRules"></div>
+              <button class="lab-btn tiny" id="addExit" type="button">+ Exit rule</button>
+            </section>
+
+            <section class="rail-block">
+              <div class="rail-title"><span>Risk</span></div>
+              <div class="risk-grid">
+                <label class="field"><span>Capital $</span><input type="number" id="rCapital" value="10000" min="100" step="500"></label>
+                <label class="field"><span>Stop loss %</span><input type="number" id="rSl" value="3" min="0" max="50" step="0.5"></label>
+                <label class="field"><span>Take profit %</span><input type="number" id="rTp" value="6" min="0" max="500" step="0.5"></label>
+                <label class="field"><span>Commission %</span><input type="number" id="rComm" value="0.02" min="0" max="5" step="0.01"></label>
+                <label class="field"><span>Slippage %</span><input type="number" id="rSlip" value="0.02" min="0" max="5" step="0.01"></label>
+              </div>
+              <label class="switch"><input type="checkbox" id="rMtf"><span class="track"></span><span>Weekly trend filter</span></label>
+              <label class="switch"><input type="checkbox" id="rFrac" checked><span class="track"></span><span>Allow fractional shares</span></label>
+            </section>
+
+          </div>
+        </aside>
+
+        <main class="lab-main">
+          <header class="lab-masthead">
+            <div class="mast-line">
+              <p class="mast-eyebrow" id="dtMetaEcho" aria-hidden="true">Backtest engine · zero dependency · runs locally</p>
+              <p class="mast-status" id="runStatus">Ready</p>
+            </div>
+            <div class="lab-tabs" role="tablist" aria-label="Lab views">
+              <button type="button" role="tab" id="tabOverview" aria-selected="true" aria-controls="paneOverview" data-tab="overview">Overview</button>
+              <button type="button" role="tab" id="tabTrades" aria-selected="false" aria-controls="paneTrades" data-tab="trades">Trade log</button>
+              <button type="button" role="tab" id="tabCompare" aria-selected="false" aria-controls="paneCompare" data-tab="compare">Compare</button>
+            </div>
+          </header>
+
+          <div class="lab-pane" id="paneOverview" role="tabpanel" aria-labelledby="tabOverview">
+            <div class="warn-box" id="warnBox" role="status" hidden></div>
+            <div class="stat-grid" id="statGrid"></div>
+
+            <section class="chapter">
+              <div class="chapter-head">
+                <h2>Price &amp; execution</h2>
+                <span class="chapter-meta" id="priceMeta">—</span>
+              </div>
+              <div class="chart-card">
+                <div class="chart-wrap"><canvas id="priceChart" aria-label="Price chart with trade executions"></canvas></div>
+                <details class="chart-data"><summary>Show data table</summary><div id="priceData"></div></details>
+              </div>
+            </section>
+
+            <section class="chapter">
+              <div class="chapter-head">
+                <h2>Equity &amp; drawdown</h2>
+                <span class="chapter-meta">strategy vs buy &amp; hold · peak to trough</span>
+              </div>
+              <div class="chart-duo">
+                <div class="chart-card">
+                  <div class="chart-label">Equity curve</div>
+                  <div class="chart-wrap"><canvas id="eqChart" aria-label="Equity curve versus buy and hold"></canvas></div>
+                  <details class="chart-data"><summary>Show data table</summary><div id="eqData"></div></details>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-label">Drawdown</div>
+                  <div class="chart-wrap"><canvas id="ddChart" aria-label="Drawdown chart"></canvas></div>
+                  <details class="chart-data"><summary>Show data table</summary><div id="ddData"></div></details>
+                </div>
+              </div>
+            </section>
+
+            <section class="chapter">
+              <div class="chapter-head">
+                <h2>Monthly returns</h2>
+                <span class="chapter-meta" id="hmMeta">—</span>
+              </div>
+              <div class="chart-card chart-card-plain">
+                <div class="heatmap" id="heatmap"></div>
+              </div>
+            </section>
+
+            <section class="export-panel">
+              <div class="export-copy">
+                <h2>Export the run</h2>
+                <p>Every number above is reproducible. Take the raw trades or the full metric report with you.</p>
+              </div>
+              <div class="export-row">
+                <button class="lab-btn solid" id="csvBtn" type="button">Download trades CSV</button>
+                <button class="lab-btn" id="reportBtn" type="button">Download report TXT</button>
+              </div>
+            </section>
+          </div>
+
+          <div class="lab-pane" id="paneTrades" role="tabpanel" aria-labelledby="tabTrades" hidden>
+            <div class="trade-head"><h2 id="tradeTitle">Trade log</h2><span class="chapter-meta" id="tradeMeta"></span></div>
+            <div class="trade-scroll">
+              <table id="tradeTable">
+                <thead>
+                  <tr><th>Entry</th><th>Exit</th><th>Entry px</th><th>Exit px</th><th>Shares</th><th>P&amp;L</th><th>Return</th><th>Bars</th><th>Reason</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="lab-pane" id="paneCompare" role="tabpanel" aria-labelledby="tabCompare" hidden>
+            <div class="compare-bar">
+              <label class="field inline"><span>Compare with</span><input id="cmpSymbol" type="text" autocomplete="off" spellcheck="false" placeholder="QQQ, BTC-USD, MSFT" aria-label="Ticker to compare against"></label>
+              <button class="lab-btn solid small" id="cmpBtn" type="button">Run comparison</button>
+            </div>
+            <div class="preset-row" id="cmpPresetRow" role="group" aria-label="Compare presets"></div>
+            <div class="info-box" id="cmpNote" role="status" hidden></div>
+            <div class="stat-grid compact" id="cmpStats"></div>
+            <section class="chapter">
+              <div class="chapter-head">
+                <h2>Normalized equity</h2>
+                <span class="chapter-meta">start = 100</span>
+              </div>
+              <div class="chart-card">
+                <div class="chart-wrap tall"><canvas id="cmpChart" aria-label="Normalized equity comparison"></canvas></div>
+                <details class="chart-data"><summary>Show data table</summary><div id="cmpData"></div></details>
+              </div>
+            </section>
+            <section class="chapter">
+              <div class="chapter-head">
+                <h2>Run comparison</h2>
+                <span class="chapter-meta">same rules, both universes</span>
+              </div>
+              <div class="chart-card chart-card-plain">
+                <div id="cmpTable"></div>
+              </div>
+            </section>
+          </div>
+
+          <footer class="lab-foot">
+            <span>Falcon Lab · zero-dependency backtesting</span>
+            <span class="foot-links"><a href="../falcon-backtest/README.md">Docs</a><a href="https://github.com">Source</a><span>MIT license</span></span>
+          </footer>
+        </main>
+
+      </div>
+    </div>
+  </div>
+
+<script src="src/util.js" defer></script>
+<script src="src/indicators.js" defer></script>
+<script src="src/state.js" defer></script>
+<script src="src/engine.js" defer></script>
+<script src="src/charts.js" defer></script>
+<script src="src/threads.js" defer></script>
+<script src="src/app.js" defer></script>
+<script src="src/motion.js" defer></script>
+</body>
+</html>

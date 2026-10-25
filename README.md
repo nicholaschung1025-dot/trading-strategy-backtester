@@ -7,6 +7,12 @@
 Python file serves it, no build step, no npm install, and the whole
 interface is driven by a single set of design tokens.
 
+> **New:** a redesigned dark/light interface lives in
+> [`falcon-lab-v2/`](falcon-lab-v2/) — same engine, new layout: preset
+> tickers in the rail, backtest overlay against any ticker, and a full
+> light mode. Run it with `python falcon-lab-v2/server.py` — see its
+> [README](falcon-lab-v2/README.md).
+
 It is a **local tool**: clone it and run it on your own machine. There is
 no public website, because the Yahoo Finance lookup needs the Python
 proxy in `server.py` — the browser cannot call Yahoo directly (CORS).

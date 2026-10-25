@@ -1,0 +1,314 @@
+(function (global) {
+  'use strict';
+  var Falcon = global.Falcon = global.Falcon || {};
+  var I = Falcon.indicators;
+  /* All market data comes from Yahoo Finance (via the bundled proxy) or a
+     user-supplied CSV. No simulated series are generated anywhere. */
+  /* ---------- strategy DSL and the backtest engine ---------- */
+
+  function parseCsv(text) {
+    var lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(function (l) { return l.trim().length; });
+    if (lines.length < 3) throw new Error('CSV needs a header row and at least two data rows');
+    var head = lines[0].split(',').map(function (h) { return h.trim().toLowerCase().replace(/^"|"$/g, '').replace(/\s+/g, '_'); });
+    var col = function (n) { return head.indexOf(n); };
+    var iD = col('date');
+    if (iD < 0) iD = col('datetime');
+    if (iD < 0) iD = 0;
+    var iO = col('open'), iH = col('high'), iL = col('low'), iC = col('close'), iV = col('volume');
+    if (iO < 0 || iH < 0 || iL < 0 || iC < 0) throw new Error('CSV needs open, high, low, close');
+    var bars = [];
+    for (var i = 1; i < lines.length; i++) {
+      var r = lines[i].split(',');
+      if (r.length < 5) continue;
+      var d = new Date(r[iD].trim());
+      if (isNaN(d.getTime())) continue;
+      var o = parseFloat(r[iO]), h = parseFloat(r[iH]), l = parseFloat(r[iL]), c = parseFloat(r[iC]);
+      if (![o, h, l, c].every(Number.isFinite)) continue;
+      var v = iV >= 0 ? parseFloat(r[iV]) : 0;
+      bars.push({ date: d, time: d.getTime(), open: o, high: h, low: l, close: c, volume: Number.isFinite(v) ? v : 0 });
+    }
+    bars.sort(function (a, b) { return a.time - b.time; });
+    if (bars.length < 60) throw new Error('Need at least 60 bars');
+    return bars;
+  }
+
+  function parseYahooChart(payload, requested) {
+    var chart = payload && payload.chart;
+    if (!chart) throw new Error('Yahoo Finance returned an unexpected response');
+    if (chart.error) throw new Error(chart.error.description || chart.error.code || 'Symbol not found');
+    var result = chart.result && chart.result[0];
+    if (!result || !result.timestamp || !result.indicators || !result.indicators.quote || !result.indicators.quote[0]) {
+      throw new Error('No price history returned for ' + requested);
+    }
+    var quote = result.indicators.quote[0];
+    var adj = result.indicators.adjclose && result.indicators.adjclose[0] ? result.indicators.adjclose[0].adjclose : null;
+    var bars = [];
+    for (var i = 0; i < result.timestamp.length; i++) {
+      var o = quote.open[i], h = quote.high[i], l = quote.low[i], c = quote.close[i], v = quote.volume[i];
+      if (![o, h, l, c].every(Number.isFinite) || c <= 0) continue;
+      var d = new Date(result.timestamp[i] * 1000);
+      if (isNaN(d.getTime())) continue;
+      var factor = adj && Number.isFinite(adj[i]) && adj[i] > 0 ? adj[i] / c : 1;
+      bars.push({
+        date: d, time: d.getTime(),
+        open: o * factor, high: h * factor, low: l * factor, close: c * factor,
+        volume: Number.isFinite(v) ? v : 0
+      });
+    }
+    bars.sort(function (a, b) { return a.time - b.time; });
+    if (bars.length < 60) throw new Error('Yahoo returned fewer than 60 daily bars');
+    var meta = result.meta || {};
+    return {
+      bars: bars,
+      ticker: String(meta.symbol || requested).toUpperCase(),
+      name: meta.longName || meta.shortName || meta.symbol || requested
+    };
+  }
+
+  var IND_LABEL = {
+    close: 'Close', open: 'Open', high: 'High', low: 'Low', volume: 'Volume',
+    sma_10: 'SMA 10', sma_20: 'SMA 20', sma_50: 'SMA 50', sma_200: 'SMA 200',
+    ema_9: 'EMA 9', ema_12: 'EMA 12', ema_21: 'EMA 21', ema_26: 'EMA 26', ema_50: 'EMA 50',
+    rsi_7: 'RSI 7', rsi_14: 'RSI 14', rsi_21: 'RSI 21',
+    macd: 'MACD', macd_signal: 'MACD signal', macd_hist: 'MACD hist',
+    bb_upper: 'BB upper', bb_middle: 'BB mid', bb_lower: 'BB lower', bb_width: 'BB width',
+    atr_14: 'ATR 14', stoch_k: 'Stoch %K', stoch_d: 'Stoch %D',
+    adx: 'ADX', plus_di: '+DI', minus_di: '-DI',
+    vwap: 'VWAP', obv: 'OBV', williams_r: 'Williams %R', cci: 'CCI'
+  };
+  Object.keys(IND_LABEL).slice().forEach(function (k) {
+    IND_LABEL[k + '_wtf'] = IND_LABEL[k] + ' · W';
+  });
+  var IND_KEYS = Object.keys(IND_LABEL);
+  var OPS = ['>', '>=', '<', '<=', '==', '!=', 'crosses_above', 'crosses_below'];
+  var OP_LABEL = {
+    '>': '>', '>=': '≥', '<': '<', '<=': '≤', '==': '=', '!=': '≠',
+    crosses_above: 'cross ↑', crosses_below: 'cross ↓'
+  };
+
+  var TEMPLATES = {
+    'Golden Cross': {
+      desc: 'Fast SMA crossing the slow SMA.',
+      entry: [{ left: 'sma_10', op: 'crosses_above', rightType: 'indicator', right: 'sma_50' }],
+      exit: [{ left: 'sma_10', op: 'crosses_below', rightType: 'indicator', right: 'sma_50' }],
+      logic: ['AND', 'AND'], sl: 3, tp: 6, mtf: false
+    },
+    'RSI Reversion': {
+      desc: 'Buy oversold, sell overbought.',
+      entry: [{ left: 'rsi_14', op: '<', rightType: 'value', right: '30' }],
+      exit: [{ left: 'rsi_14', op: '>', rightType: 'value', right: '70' }],
+      logic: ['AND', 'AND'], sl: 3, tp: 8, mtf: false
+    },
+    'MACD Momentum': {
+      desc: 'MACD line crossing its signal.',
+      entry: [{ left: 'macd', op: 'crosses_above', rightType: 'indicator', right: 'macd_signal' }],
+      exit: [{ left: 'macd', op: 'crosses_below', rightType: 'indicator', right: 'macd_signal' }],
+      logic: ['AND', 'AND'], sl: 3, tp: 6, mtf: false
+    },
+    'Bollinger Squeeze': {
+      desc: 'Close above the upper band, exit at the mid band.',
+      entry: [{ left: 'close', op: 'crosses_above', rightType: 'indicator', right: 'bb_upper' }],
+      exit: [{ left: 'close', op: 'crosses_below', rightType: 'indicator', right: 'bb_middle' }],
+      logic: ['AND', 'AND'], sl: 2, tp: 5, mtf: false
+    },
+    'Dual Timeframe': {
+      desc: 'Daily SMA cross, weekly trend as the exit filter.',
+      entry: [{ left: 'sma_10', op: 'crosses_above', rightType: 'indicator', right: 'sma_50' }],
+      exit: [{ left: 'close', op: '<', rightType: 'indicator', right: 'sma_200_wtf' }],
+      logic: ['AND', 'AND'], sl: 3, tp: 8, mtf: true
+    },
+    'Trend + Oscillator': {
+      desc: 'ADX trend filter plus a stochastic cross.',
+      entry: [
+        { left: 'adx', op: '>', rightType: 'value', right: '25' },
+        { left: 'stoch_k', op: 'crosses_above', rightType: 'indicator', right: 'stoch_d' }
+      ],
+      exit: [{ left: 'stoch_k', op: '>', rightType: 'value', right: '80' }],
+      logic: ['AND', 'AND'], sl: 3, tp: 7, mtf: false
+    }
+  };
+
+  function readSeries(s, key, idx) {
+    var arr = s[key];
+    if (!arr) return null;
+    var v = arr[idx];
+    return (v === null || v === undefined || Number.isNaN(v)) ? null : v;
+  }
+  function evalCond(cond, s, idx) {
+    if (!cond) return false;
+    var lv = readSeries(s, cond.left, idx);
+    if (lv === null) return false;
+    var rv = cond.rightType === 'value' ? Number(cond.right) : readSeries(s, cond.right, idx);
+    if (rv === null || !Number.isFinite(rv)) return false;
+    switch (cond.op) {
+      case '>': return lv > rv;
+      case '>=': return lv >= rv;
+      case '<': return lv < rv;
+      case '<=': return lv <= rv;
+      case '==': return Math.abs(lv - rv) < 1e-10;
+      case '!=': return Math.abs(lv - rv) >= 1e-10;
+      case 'crosses_above':
+      case 'crosses_below':
+        if (idx < 1) return false;
+        var pl = readSeries(s, cond.left, idx - 1);
+        if (pl === null) return false;
+        var pr = cond.rightType === 'value' ? Number(cond.right) : readSeries(s, cond.right, idx - 1);
+        if (pr === null || !Number.isFinite(pr)) return false;
+        return cond.op === 'crosses_above' ? (pl <= pr && lv > rv) : (pl >= pr && lv < rv);
+    }
+    return false;
+  }
+  function evalGroup(conds, logic, s, idx) {
+    if (!conds || !conds.length) return false;
+    if (logic === 'AND') {
+      for (var i = 0; i < conds.length; i++) if (!evalCond(conds[i], s, idx)) return false;
+      return true;
+    }
+    for (var j = 0; j < conds.length; j++) if (evalCond(conds[j], s, idx)) return true;
+    return false;
+  }
+
+  function execute(bars, s, rules, logic, risk) {
+    var capital = Math.max(100, risk.capital || 10000);
+    var feeRate = Math.max(0, risk.comm || 0) / 100;
+    var slipRate = Math.max(0, risk.slip || 0) / 100;
+    var fractional = risk.fractional !== false;
+    var cash = capital, pos = null, fees = 0;
+    var trades = [], equity = [];
+    var blockedEntries = 0, blockedPrice = 0;
+    var sl = Math.max(0, risk.sl || 0), tp = Math.max(0, risk.tp || 0);
+
+    function closeAt(idx, price, reason) {
+      var proceeds = pos.shares * price;
+      var fee = proceeds * (feeRate + slipRate);
+      cash += proceeds - fee;
+      fees += fee;
+      var cost = pos.shares * pos.entryPrice;
+      var pnl = proceeds - fee - cost - pos.entryFee;
+      trades.push({
+        entryIdx: pos.entryIdx, exitIdx: idx,
+        entryDate: pos.entryDate, exitDate: bars[idx].date,
+        entryPrice: pos.entryPrice, exitPrice: price, shares: pos.shares,
+        pnl: pnl, retPct: cost ? pnl / cost * 100 : 0,
+        duration: idx - pos.entryIdx, reason: reason
+      });
+      pos = null;
+    }
+
+    for (var i = 0; i < bars.length; i++) {
+      var bar = bars[i];
+      if (pos) {
+        var ep = pos.entryPrice;
+        var slHit = sl > 0 && bar.low <= ep * (1 - sl / 100);
+        var tpHit = tp > 0 && bar.high >= ep * (1 + tp / 100);
+        if (slHit && tpHit) { slHit = bar.open <= ep; tpHit = !slHit; }
+        if (slHit) {
+          var sx = ep * (1 - sl / 100);
+          if (bar.open < sx) sx = bar.open;
+          closeAt(i, sx, 'Stop loss');
+        } else if (tpHit) {
+          var tx = ep * (1 + tp / 100);
+          if (bar.open > tx) tx = bar.open;
+          closeAt(i, tx, 'Take profit');
+        } else if (evalGroup(rules.exit, logic.exit, s, i)) {
+          closeAt(i, bar.close, 'Signal');
+        }
+      } else if (evalGroup(rules.entry, logic.entry, s, i)) {
+        var price = bar.close;
+        var affordable = cash / (price * (1 + feeRate + slipRate));
+        var shares = fractional ? affordable : Math.floor(affordable);
+        if (shares > (fractional ? 1e-9 : 0)) {
+          var cost = shares * price;
+          var entryFee = cost * (feeRate + slipRate);
+          cash -= cost + entryFee;
+          fees += entryFee;
+          pos = { entryIdx: i, entryDate: bar.date, entryPrice: price, shares: shares, entryFee: entryFee };
+        } else {
+          blockedEntries++;
+          if (!blockedPrice) blockedPrice = price;
+        }
+      }
+      equity.push({ date: bar.date, equity: cash + (pos ? pos.shares * bar.close : 0) });
+    }
+
+    if (pos) {
+      closeAt(bars.length - 1, bars[bars.length - 1].close, 'End of data');
+      equity[equity.length - 1].equity = cash;
+    }
+
+    var bShares = fractional ? capital / bars[0].close : Math.floor(capital / bars[0].close);
+    var bCash = capital - bShares * bars[0].close;
+    var benchmark = bars.map(function (b) { return { date: b.date, equity: bCash + bShares * b.close }; });
+
+    var dd = [];
+    var peak = -Infinity;
+    equity.forEach(function (p) {
+      peak = Math.max(peak, p.equity);
+      dd.push(peak > 0 ? (p.equity / peak - 1) * 100 : 0);
+    });
+
+    var metrics = calcMetrics(trades, equity, capital, cash, fees);
+    return {
+      trades: trades, equity: equity, benchmark: benchmark, drawdown: dd,
+      metrics: metrics, capital: capital, finalCapital: cash, fees: fees, series: s,
+      blockedEntries: blockedEntries, blockedPrice: blockedPrice, fractional: fractional
+    };
+  }
+
+  function calcMetrics(trades, equity, capital, finalCash, fees) {
+    var n = trades.length;
+    var netPnl = finalCash - capital;
+    var totalReturn = capital ? netPnl / capital * 100 : 0;
+    var wins = 0, losses = 0, grossWin = 0, grossLoss = 0, best = 0, worst = 0, durSum = 0, holdingBars = 0;
+    trades.forEach(function (t) {
+      if (t.pnl > 0) { wins++; grossWin += t.pnl; } else { losses++; grossLoss += Math.abs(t.pnl); }
+      if (t.retPct > best) best = t.retPct;
+      if (t.retPct < worst) worst = t.retPct;
+      durSum += t.duration;
+      holdingBars += t.duration;
+    });
+    var winRate = n ? wins / n * 100 : 0;
+    var timeInMarket = equity.length ? holdingBars / equity.length * 100 : 0;
+    var profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : 0);
+    var peak = -Infinity, maxDD = 0;
+    equity.forEach(function (p) { peak = Math.max(peak, p.equity); if (peak > 0) maxDD = Math.max(maxDD, (peak - p.equity) / peak * 100); });
+
+    var rets = [];
+    for (var i = 1; i < equity.length; i++) {
+      if (equity[i - 1].equity > 0) rets.push(equity[i].equity / equity[i - 1].equity - 1);
+    }
+    var mean = rets.length ? rets.reduce(function (a, b) { return a + b; }, 0) / rets.length : 0;
+    var variance = 0;
+    if (rets.length > 1) {
+      variance = rets.reduce(function (a, r) { return a + (r - mean) * (r - mean); }, 0) / (rets.length - 1);
+    }
+    var std = Math.sqrt(variance);
+    var sharpe = std > 0 ? mean / std * Math.sqrt(252) : 0;
+    var neg = rets.filter(function (r) { return r < 0; });
+    var negMean = neg.length ? neg.reduce(function (a, b) { return a + b; }, 0) / neg.length : 0;
+    var downVar = 0;
+    if (neg.length > 1) downVar = neg.reduce(function (a, r) { return a + (r - negMean) * (r - negMean); }, 0) / (neg.length - 1);
+    var downStd = Math.sqrt(downVar);
+    var sortino = downStd > 0 ? mean / downStd * Math.sqrt(252) : 0;
+    var calmar = maxDD > 0 ? totalReturn / maxDD : 0;
+
+    var cw = 0, cl = 0, mcw = 0, mcl = 0;
+    trades.forEach(function (t) {
+      if (t.pnl > 0) { cw++; cl = 0; mcw = Math.max(mcw, cw); }
+      else { cl++; cw = 0; mcl = Math.max(mcl, cl); }
+    });
+
+    return {
+      netPnl: netPnl, totalReturn: totalReturn, totalTrades: n, winRate: winRate,
+      profitFactor: profitFactor, maxDrawdown: maxDD, timeInMarket: timeInMarket,
+      avgWin: wins ? grossWin / wins : 0, avgLoss: losses ? -grossLoss / losses : 0,
+      sharpe: sharpe, sortino: sortino, calmar: calmar,
+      maxConsecWins: mcw, maxConsecLosses: mcl,
+      avgDuration: n ? durSum / n : 0, bestTrade: best, worstTrade: worst,
+      expectancy: n ? netPnl / n : 0, fees: fees,
+      initialCapital: capital, finalCapital: finalCash
+    };
+  }
+
+  Falcon.engine = {TEMPLATES: TEMPLATES, IND_LABEL: IND_LABEL, IND_KEYS: IND_KEYS, OPS: OPS, OP_LABEL: OP_LABEL, parseCsv: parseCsv, parseYahooChart: parseYahooChart, buildSeries: I.buildSeries, execute: execute, evalCond: evalCond};
+})(window);
